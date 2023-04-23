@@ -1,0 +1,24 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Echo Server",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/server/echoServer.py",
+            "console": "integratedTerminal",
+            "justMyCode": true
+        },
+        {
+            "name": "Echo Client",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/client/echoClient.py",
+            "console": "integratedTerminal",
+            "justMyCode": true
+        }
+    ]
+}
