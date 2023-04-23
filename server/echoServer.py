@@ -23,6 +23,7 @@ class EchoServer:
                     connection.sendall(data)
 
 if __name__ == "__main__":
+    print(" === Echo Server === ")
     ip = "127.0.0.1"
     port = 36578
     server = EchoServer(ip, port)

@@ -21,6 +21,7 @@ class EchoClient:
 
 
 if __name__ == "__main__":
+    print(" === Echo Client === ")
     ip = "127.0.0.1"
     port = 36578
     client = EchoClient(ip, port)
