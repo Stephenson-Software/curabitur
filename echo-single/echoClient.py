@@ -20,7 +20,7 @@ class EchoClient:
                     print("Connection timed out. Retrying. Attempts Made: " + str(attempts))
 
             while(True):
-            # get user input
+                # get user input
                 userInput = input("Enter a message to send to the server: ")
                 s.sendall(userInput.encode())
                 data = s.recv(1024)
