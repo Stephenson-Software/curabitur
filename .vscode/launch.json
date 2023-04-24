@@ -16,7 +16,7 @@
             "name": "Echo Client",
             "type": "python",
             "request": "launch",
-            "program": "${workspaceFolder}/echo-signle/echoClient.py",
+            "program": "${workspaceFolder}/echo-single/echoClient.py",
             "console": "integratedTerminal",
             "justMyCode": true
         }
