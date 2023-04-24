@@ -24,7 +24,7 @@ class EchoServer:
 
 if __name__ == "__main__":
     print(" === Echo Server === ")
-    ip = ""
+    ip = socket.getaddrinfo(socket.gethostname(), 0, socket.AF_INET)[0][4][0]
     port = 36578
     server = EchoServer(ip, port)
     server.listen()
