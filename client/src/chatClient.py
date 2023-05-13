@@ -1,7 +1,7 @@
 import os
 import socket
 
-class EchoClient:
+class ChatClient:
     def __init__(self, host, port):
         self.host = host
         self.port = port
@@ -21,7 +21,7 @@ class EchoClient:
 
             while(True):
                 # get user input
-                userInput = input("> ")
+                userInput = input("Client: ")
                 s.sendall(userInput.encode())
                 data = s.recv(1024)
                 print(f"Server: {data.decode()!r}")
@@ -29,8 +29,13 @@ class EchoClient:
 
 
 if __name__ == "__main__":
-    print(" === Echo Client === ")
-    ip = "192.168.0.84"
+    print(" === Chat Client === ")
+    ip = os.environ.get("CHAT_SERVER_IP")
+    
+    if ip is None:
+        print("CHAT_SERVER_IP environment variable not set. Exiting.")
+        exit(1)
+    
     port = 36578
-    client = EchoClient(ip, port)
+    client = ChatClient(ip, port)
     client.connect()
