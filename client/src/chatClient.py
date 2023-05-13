@@ -21,16 +21,16 @@ class EchoClient:
 
             while(True):
                 # get user input
-                userInput = input("Enter a message to send to the server: ")
+                userInput = input("> ")
                 s.sendall(userInput.encode())
                 data = s.recv(1024)
-                print(f"Received {data.decode()!r} from the server.")
+                print(f"Server: {data.decode()!r}")
                 print("")
 
 
 if __name__ == "__main__":
     print(" === Echo Client === ")
-    ip = "192.168.0.146"
+    ip = "192.168.0.84"
     port = 36578
     client = EchoClient(ip, port)
     client.connect()

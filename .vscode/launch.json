@@ -5,18 +5,18 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Echo Server",
+            "name": "Chat Server",
             "type": "python",
             "request": "launch",
-            "program": "${workspaceFolder}/echo-single/echoServer.py",
+            "program": "${workspaceFolder}/server/src/chatServer.py",
             "console": "integratedTerminal",
             "justMyCode": true
         },
         {
-            "name": "Echo Client",
+            "name": "Chat Client",
             "type": "python",
             "request": "launch",
-            "program": "${workspaceFolder}/echo-single/echoClient.py",
+            "program": "${workspaceFolder}/client/src/chatClient.py",
             "console": "integratedTerminal",
             "justMyCode": true
         }

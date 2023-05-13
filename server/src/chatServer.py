@@ -18,8 +18,10 @@ class EchoServer:
                     data = connection.recv(1024)
                     if not data:
                         break
-                    print(f"Received {data.decode()!r} from the client.")
-                    print(f"Sending {data.decode()!r} back to the client.")
+                    print(f"Client: {data.decode()!r}")
+                    # get response from server
+                    userInput = input("> ")
+                    data = userInput.encode()
                     connection.sendall(data)
 
 if __name__ == "__main__":
