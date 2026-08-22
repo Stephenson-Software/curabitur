@@ -2,7 +2,7 @@
 
 if [ $# -eq 0 ]
   then
-    echo "Usage: ./run.sh <server-ip>"
+    echo "Usage: bash run_client.sh <server-ip>"
     exit 1
 fi
 
