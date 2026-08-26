@@ -1,5 +1,6 @@
 import os
 import socket
+import time
 
 class ChatClient:
     def __init__(self, host, port):
@@ -8,17 +9,21 @@ class ChatClient:
 
     def connect(self):
         print(f"Connecting to {self.host}:{self.port}...")
-        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-            connected = False
-            attempts = 0
-            while not connected:
-                attempts += 1
-                try:
-                    s.connect((self.host, self.port))
-                    connected = True
-                except TimeoutError:
-                    print("Connection timed out. Retrying. Attempts Made: " + str(attempts))
+        connected = False
+        attempts = 0
+        while not connected:
+            attempts += 1
+            # a refused connect can leave the socket unusable, so dial with a fresh one
+            s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            try:
+                s.connect((self.host, self.port))
+                connected = True
+            except (TimeoutError, ConnectionRefusedError) as error:
+                s.close()
+                print(f"Connection failed: {error}. Retrying in 1 second. Attempts Made: {attempts}")
+                time.sleep(1)
 
+        with s:
             while(True):
                 # get user input
                 userInput = input("Client: ")

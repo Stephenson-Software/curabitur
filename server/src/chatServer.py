@@ -9,6 +9,8 @@ class ChatServer:
         while True:
             print(f"Listening on {self.host}:{self.port}...")
             with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                # allow re-binding while a previous connection is still in TIME_WAIT
+                s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
                 s.bind((self.host, self.port))
                 s.listen()
                 connection, address = s.accept()
