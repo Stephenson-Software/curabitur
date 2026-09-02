@@ -19,6 +19,9 @@ The name of this repository is derived from the Latin word "curabitur" which mea
 5. Open another terminal and navigate to the root of the repository
 6. Run `bash run_client.sh <IP>` in the second terminal, using the address from step 4
 
+### Ending a Session
+Press Ctrl-D at either program's prompt to close its input. Both the server and the client report `Input closed. Exiting.` and shut down cleanly.
+
 ## Learning Resources
 - https://realpython.com/python-sockets/
 - https://docs.python.org/3/howto/sockets.html
