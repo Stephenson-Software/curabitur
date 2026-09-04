@@ -22,7 +22,11 @@ class ChatServer:
                             break
                         print(f"Client: {data.decode()!r}")
                         # get response from server
-                        userInput = input("Server: ")
+                        try:
+                            userInput = input("Server: ")
+                        except EOFError:
+                            print("\nInput closed. Exiting.")
+                            return
                         data = userInput.encode()
                         connection.sendall(data)
 

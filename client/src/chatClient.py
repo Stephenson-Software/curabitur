@@ -26,7 +26,11 @@ class ChatClient:
         with s:
             while(True):
                 # get user input
-                userInput = input("Client: ")
+                try:
+                    userInput = input("Client: ")
+                except EOFError:
+                    print("\nInput closed. Exiting.")
+                    return
                 s.sendall(userInput.encode())
                 data = s.recv(1024)
                 print(f"Server: {data.decode()!r}")
