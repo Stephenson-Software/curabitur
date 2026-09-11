@@ -47,4 +47,8 @@ if __name__ == "__main__":
     
     port = 36578
     client = ChatClient(ip, port)
-    client.connect()
+    try:
+        client.connect()
+    except KeyboardInterrupt:
+        # Ctrl-C at the prompt, in recv() or while retrying; the with block closes the socket
+        print("\nInterrupted. Exiting.")
