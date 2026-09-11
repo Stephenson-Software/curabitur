@@ -35,4 +35,8 @@ if __name__ == "__main__":
     ip = socket.getaddrinfo(socket.gethostname(), 0, socket.AF_INET)[0][4][0]
     port = 36578
     server = ChatServer(ip, port)
-    server.listen()
+    try:
+        server.listen()
+    except KeyboardInterrupt:
+        # Ctrl-C at the prompt, in accept() or in recv(); the with blocks close the sockets
+        print("\nInterrupted. Exiting.")
