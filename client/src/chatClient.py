@@ -31,8 +31,16 @@ class ChatClient:
                 except EOFError:
                     print("\nInput closed. Exiting.")
                     return
-                s.sendall(userInput.encode())
-                data = s.recv(1024)
+                try:
+                    s.sendall(userInput.encode())
+                    data = s.recv(1024)
+                except (ConnectionResetError, BrokenPipeError):
+                    # the server went away abruptly between prompts
+                    data = b""
+                if not data:
+                    # an empty recv means the server closed the connection
+                    print("Server disconnected. Exiting.")
+                    return
                 print(f"Server: {data.decode()!r}")
                 print("")
 

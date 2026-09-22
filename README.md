@@ -24,6 +24,8 @@ Press Ctrl-D at either program's prompt to close its input. Both the server and 
 
 Pressing Ctrl-C works at any point — at a prompt, while the server is waiting for a client, or while the client is retrying a connection. The program reports `Interrupted. Exiting.` and shuts down cleanly.
 
+If the server goes away while the client is connected, the client reports `Server disconnected. Exiting.` on its next message and shuts down cleanly rather than prompting for input on a closed connection. When the client goes away, the server returns to waiting for a new connection.
+
 ## Learning Resources
 - https://realpython.com/python-sockets/
 - https://docs.python.org/3/howto/sockets.html
