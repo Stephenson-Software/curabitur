@@ -2,10 +2,14 @@ import os
 import socket
 import time
 
+from usage_reporting import reportConnected, startUsageReporting
+
 class ChatClient:
-    def __init__(self, host, port):
+    def __init__(self, host, port, usage=None):
         self.host = host
         self.port = port
+        # the trace client from usage_reporting, or None to report nothing
+        self.usage = usage
 
     def connect(self):
         print(f"Connecting to {self.host}:{self.port}...")
@@ -22,6 +26,9 @@ class ChatClient:
                 s.close()
                 print(f"Connection failed: {error}. Retrying in 1 second. Attempts Made: {attempts}")
                 time.sleep(1)
+
+        if self.usage is not None:
+            reportConnected(self.usage)
 
         with s:
             while(True):
@@ -53,8 +60,9 @@ if __name__ == "__main__":
         print("CHAT_SERVER_IP environment variable not set. Exiting.")
         exit(1)
     
+    usage = startUsageReporting()
     port = 36578
-    client = ChatClient(ip, port)
+    client = ChatClient(ip, port, usage)
     try:
         client.connect()
     except KeyboardInterrupt:

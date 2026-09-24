@@ -1,2 +1,6 @@
 __pycache__/
 *.pyc
+
+# written on first launch by */src/usage_reporting.py; holds the usage-reporting opt-out
+client/settings.json
+server/settings.json
