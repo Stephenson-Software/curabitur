@@ -1,9 +1,13 @@
 import socket
 
+from usage_reporting import reportConnected, startUsageReporting
+
 class ChatServer:
-    def __init__(self, host, port):
+    def __init__(self, host, port, usage=None):
         self.host = host
         self.port = port
+        # the trace client from usage_reporting, or None to report nothing
+        self.usage = usage
 
     def listen(self):
         while True:
@@ -16,6 +20,8 @@ class ChatServer:
                 connection, address = s.accept()
                 with connection:
                     print(f"Accepted connection from {address}")
+                    if self.usage is not None:
+                        reportConnected(self.usage)
                     while True:
                         data = connection.recv(1024)
                         if not data:
@@ -33,8 +39,9 @@ class ChatServer:
 if __name__ == "__main__":
     print(" === Chat Server === ")
     ip = socket.getaddrinfo(socket.gethostname(), 0, socket.AF_INET)[0][4][0]
+    usage = startUsageReporting()
     port = 36578
-    server = ChatServer(ip, port)
+    server = ChatServer(ip, port, usage)
     try:
         server.listen()
     except KeyboardInterrupt:

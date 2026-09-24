@@ -10,4 +10,4 @@ echo "Building client image..."
 docker build ./client -t chat-client
 
 echo "Running client..."
-docker run -e CHAT_SERVER_IP=$1 -it --rm chat-client
+docker run -e TRACE_USAGE_REPORTING -e DO_NOT_TRACK -e CHAT_SERVER_IP=$1 -it --rm chat-client
