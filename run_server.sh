@@ -1,4 +1,4 @@
-# /bin/bash
+#!/bin/bash
 
 echo "Building server image..."
 docker build ./server -t chat-server
