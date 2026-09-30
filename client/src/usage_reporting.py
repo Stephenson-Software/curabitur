@@ -1,7 +1,7 @@
 """Reports that the curabitur chat client was used to the trace service, and nothing else.
 
-What is sent: the program's name (``curabitur``) and version with a ``startup``
-event tagged ``role`` = ``client``, and a ``connected`` event with the same tag
+What is sent: the program's name (``curabitur``) and version with every event -- a
+``startup`` event tagged ``role`` = ``client``, and a ``connected`` event with the same tag
 when it connects to a server. Nothing about you, your machine, the addresses or
 the messages.
 
@@ -112,6 +112,7 @@ def buildClient(section):
         return TraceClient(
             str(section.get("endpoint") or DEFAULT_ENDPOINT),
             APPLICATION,
+            VERSION,
             key=str(section.get("key") or DEFAULT_KEY),
             enabled=bool(section.get("enabled", True)),
         )
@@ -129,7 +130,7 @@ def startUsageReporting(settingsFile=SETTINGS_FILE, log=print):
         client = buildClient(loadSettings(settingsFile, log))
     except Exception:
         return TraceClient.disabled()
-    client.report("startup", tags={"version": VERSION, "role": ROLE})
+    client.report("startup", tags={"role": ROLE})
     atexit.register(client.close)
     return client
 

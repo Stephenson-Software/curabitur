@@ -226,7 +226,7 @@ class TestStartupEvent(unittest.TestCase):
 
         self.assertEqual("client", ROLE)
         self.assertEqual(2, len(self.requests))
-        self.assertEqual({"application": "curabitur", "name": "connected", "tags": {"role": "client"}},
+        self.assertEqual({"application": "curabitur", "name": "connected", "tags": {"role": "client", "version": VERSION}},
                          self.requests[1]["body"])
 
     def test_start_never_raises_even_if_settings_loading_fails(self):
