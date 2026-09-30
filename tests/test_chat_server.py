@@ -1,9 +1,11 @@
-"""Tests for ChatServer's accept loop and chat loop. socket.socket and input() are patched,
-so nothing here binds a real port or waits on a terminal."""
+"""Tests for ChatServer's accept loop and chat loop, and for the Ctrl-C handling in its
+__main__ block. socket.socket and input() are patched, so nothing here binds a real port or
+waits on a terminal."""
 import importlib.util
 import io
 import os
 import re
+import runpy
 import socket
 import sys
 import unittest
@@ -57,6 +59,24 @@ def _run(server, sockets, inputs):
     return out.getvalue(), reportConnected
 
 
+def _runMain(sockets, inputs):
+    """Run chatServer.py's __main__ block like _run, with the host lookup and usage reporting
+    patched out so nothing resolves a name or is sent. Returns what was printed."""
+    out = io.StringIO()
+    usage = sys.modules["usage_reporting"]
+    with patch.object(socket, "socket", side_effect=sockets), \
+         patch.object(socket, "getaddrinfo", return_value=[(None, None, None, None, ("10.0.0.5", 0))]), \
+         patch("builtins.input", side_effect=inputs), \
+         patch.object(usage, "startUsageReporting", return_value=None), \
+         redirect_stdout(out):
+        try:
+            runpy.run_path(os.path.join(_SRC, "chatServer.py"), run_name="__main__")
+        except KeyboardInterrupt:
+            # an escaping KeyboardInterrupt would stop the whole unittest run, so fail instead
+            raise AssertionError("KeyboardInterrupt escaped the __main__ block") from None
+    return out.getvalue()
+
+
 class TestChatServer(unittest.TestCase):
     def test_binds_the_configured_host_and_port_with_reuseaddr(self):
         sock, _ = _listeningSocket()
@@ -95,6 +115,20 @@ class TestChatServer(unittest.TestCase):
         sock, _ = _listeningSocket([b"ping"])
         _, reportConnected = _run(ChatServer("host", 1), [sock], [EOFError()])
         reportConnected.assert_not_called()
+
+    def test_ctrl_c_while_waiting_for_a_client_exits_cleanly(self):
+        sock, _ = _listeningSocket()
+        sock.accept.side_effect = KeyboardInterrupt()
+        output = _runMain([sock], [])
+        self.assertIn("Interrupted. Exiting.", output)
+        sock.__exit__.assert_called_once()
+
+    def test_ctrl_c_at_the_prompt_exits_cleanly(self):
+        sock, connection = _listeningSocket([b"ping"])
+        output = _runMain([sock], [KeyboardInterrupt()])
+        self.assertIn("Interrupted. Exiting.", output)
+        connection.__exit__.assert_called_once()
+        sock.__exit__.assert_called_once()
 
     def test_server_and_client_use_the_same_port(self):
         ports = []

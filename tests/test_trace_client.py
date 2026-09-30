@@ -75,6 +75,7 @@ class TraceClientTest(unittest.TestCase):
 
     def tearDown(self):
         self.server.shutdown()
+        self.server.server_close()
         logging.getLogger("trace").removeHandler(self.handler)
 
     def test_report_posts_the_event_to_the_metrics_endpoint_with_the_key(self):

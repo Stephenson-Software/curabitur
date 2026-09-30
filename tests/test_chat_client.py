@@ -1,11 +1,14 @@
-"""Tests for ChatClient's connect loop and chat loop, and for the CHAT_SERVER_IP check in its
-__main__ block. socket.socket and input() are patched, so nothing here opens a real
-connection or waits on a terminal."""
+"""Tests for ChatClient's connect loop and chat loop, and for the CHAT_SERVER_IP check and
+Ctrl-C handling in its __main__ block. socket.socket and input() are patched, so nothing
+here opens a real connection or waits on a terminal."""
 import importlib.util
 import io
 import os
+import runpy
+import socket
 import subprocess
 import sys
+import time
 import unittest
 from contextlib import redirect_stdout
 from unittest.mock import MagicMock, patch
@@ -34,6 +37,25 @@ def _run(client, sockets, inputs):
          redirect_stdout(out):
         client.connect()
     return out.getvalue(), reportConnected
+
+
+def _runMain(sockets, inputs, sleep=None):
+    """Run chatClient.py's __main__ block like _run, with CHAT_SERVER_IP set and usage
+    reporting patched out so nothing is sent. Returns what was printed."""
+    out = io.StringIO()
+    usage = sys.modules["usage_reporting"]
+    with patch.dict(os.environ, {"CHAT_SERVER_IP": "10.0.0.5"}), \
+         patch.object(socket, "socket", side_effect=sockets), \
+         patch("builtins.input", side_effect=inputs), \
+         patch.object(time, "sleep", side_effect=sleep), \
+         patch.object(usage, "startUsageReporting", return_value=None), \
+         redirect_stdout(out):
+        try:
+            runpy.run_path(os.path.join(_SRC, "chatClient.py"), run_name="__main__")
+        except KeyboardInterrupt:
+            # an escaping KeyboardInterrupt would stop the whole unittest run, so fail instead
+            raise AssertionError("KeyboardInterrupt escaped the __main__ block") from None
+    return out.getvalue()
 
 
 class TestChatClient(unittest.TestCase):
@@ -101,6 +123,20 @@ class TestChatClient(unittest.TestCase):
                                 text=True, timeout=30)
         self.assertEqual(result.returncode, 1)
         self.assertIn("CHAT_SERVER_IP environment variable not set. Exiting.", result.stdout)
+
+    def test_ctrl_c_while_retrying_exits_cleanly(self):
+        refused = MagicMock()
+        refused.connect.side_effect = ConnectionRefusedError("refused")
+        output = _runMain([refused], [], sleep=KeyboardInterrupt())
+        self.assertIn("Interrupted. Exiting.", output)
+        refused.close.assert_called_once_with()
+
+    def test_ctrl_c_at_the_prompt_exits_cleanly(self):
+        sock = MagicMock()
+        output = _runMain([sock], [KeyboardInterrupt()])
+        self.assertIn("Interrupted. Exiting.", output)
+        sock.connect.assert_called_once_with(("10.0.0.5", 36578))
+        sock.__exit__.assert_called_once()
 
 
 if __name__ == "__main__":
