@@ -2,7 +2,9 @@
 
 What is sent: the program's name (``curabitur``) and version with every event -- a
 ``startup`` event tagged ``role`` = ``server``, and a ``connected`` event with the same tag
-when it accepts a client's connection. Nothing about you, your machine, the addresses or
+when it accepts a client's connection. Every event also carries a random installation ID
+(tag ``install``, see ``installIdFile``) so installations can be counted rather than events.
+Nothing about you, the addresses or
 the messages.
 
 Reporting is on by default. The first launch writes a ``usage_reporting``
@@ -17,6 +19,7 @@ the network happens on a daemon thread owned by the vendored client in
 import atexit
 import json
 import os
+import sys
 
 from trace_client import TraceClient, environment_opts_out
 
@@ -43,7 +46,7 @@ DETAILS_URL = "https://github.com/Stephenson-Software/trace#usage-reporting"
 FIRST_RUN_NOTICE = (
     "Usage reporting is on: the curabitur server sends its name, version and role when it starts and "
     "when it accepts a client's connection, to "
-    "https://trace.danielstephenson.dev - nothing about you, your machine, the addresses or the messages. "
+    "https://trace.danielstephenson.dev, with a random installation ID - nothing about you, the addresses or the messages. "
     'Turn it off with "usage_reporting": {"enabled": false} in server/settings.json, or for every '
     "trace-reporting program with the environment variable TRACE_USAGE_REPORTING=off. "
     "Details: " + DETAILS_URL
@@ -64,6 +67,24 @@ def firstRunNotice():
 def defaultSettings():
     """The usage_reporting block written to the settings file on the first launch."""
     return {"enabled": True, "endpoint": DEFAULT_ENDPOINT, "key": DEFAULT_KEY}
+
+
+def installIdFile():
+    """Where this installation's random ID (the tag ``install`` on every event) is kept:
+    ``<user data dir>/curabitur/trace-install-id``, the user data dir being %APPDATA% on
+    Windows, ~/Library/Application Support on macOS and $XDG_DATA_HOME (or ~/.local/share)
+    elsewhere. The client and the server share it, as they share the application name. The
+    trace client only reads or creates it when reporting is on; deleting it resets the ID.
+    In a container the directory is usually not kept, so each new container gets a new ID
+    unless TRACE_INSTALL_ID pins one."""
+    home = os.path.expanduser("~")
+    if sys.platform == "win32":
+        base = os.environ.get("APPDATA", "").strip() or os.path.join(home, "AppData", "Roaming")
+    elif sys.platform == "darwin":
+        base = os.path.join(home, "Library", "Application Support")
+    else:
+        base = os.environ.get("XDG_DATA_HOME", "").strip() or os.path.join(home, ".local", "share")
+    return os.path.join(base, APPLICATION.lower(), "trace-install-id")
 
 
 def loadSettings(settingsFile=SETTINGS_FILE, log=print):
@@ -104,7 +125,10 @@ def buildClient(section):
 
     Always built through the client's constructor otherwise, which puts
     TRACE_USAGE_REPORTING / DO_NOT_TRACK ahead of ``enabled`` and records why it is off in
-    ``disabled_reason``. A missing endpoint or key falls back to the shipped default.
+    ``disabled_reason``. A missing endpoint or key falls back to the shipped default. Every
+    event carries a random installation ID as ``install``: TRACE_INSTALL_ID when set, else the
+    one kept in installIdFile(); the client resolves both only after its opt-out checks, so a
+    disabled client never creates the file.
     """
     if section is None:
         return TraceClient.disabled()
@@ -115,6 +139,8 @@ def buildClient(section):
             VERSION,
             key=str(section.get("key") or DEFAULT_KEY),
             enabled=bool(section.get("enabled", True)),
+            install_id=os.environ.get("TRACE_INSTALL_ID"),
+            install_id_file=installIdFile(),
         )
     except Exception:
         return TraceClient.disabled()
