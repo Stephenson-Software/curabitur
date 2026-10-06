@@ -24,7 +24,7 @@ Press Ctrl-D at either program's prompt to close its input. Both the server and 
 
 Pressing Ctrl-C works at any point — at a prompt, while the server is waiting for a client, or while the client is retrying a connection. The program reports `Interrupted. Exiting.` and shuts down cleanly.
 
-If the server goes away while the client is connected, the client reports `Server disconnected. Exiting.` on its next message and shuts down cleanly rather than prompting for input on a closed connection. When the client goes away, the server returns to waiting for a new connection.
+If the server goes away while the client is connected, the client reports `Server disconnected. Exiting.` on its next message and shuts down cleanly rather than prompting for input on a closed connection. When the client goes away, even abruptly, the server returns to waiting for a new connection.
 
 ## Usage reporting
 Usage reporting is on by default: the server and the client each send the program's name (`curabitur`), its version and the events `startup` (when the program starts) and `connected` (when the server accepts a client, or the client reaches a server) to [trace](https://github.com/Stephenson-Software/trace) at `https://trace.danielstephenson.dev`. Every event carries a `role` tag saying which of the two sent it (`server` or `client`), and a random installation ID (the tag `install`) so installations can be counted rather than events. Nothing about you, your machine, your IP address, the addresses you connect to or the messages is sent. The report is made from a background thread, never blocks the chat, and is dropped silently if the service is unreachable.
@@ -56,7 +56,7 @@ Details: https://github.com/Stephenson-Software/trace#usage-reporting
 ```
 python3 -m unittest discover -s tests
 ```
-The suite covers the server's and the client's chat loops against mocked sockets and input (binding and retrying, sending and printing messages, and exiting on closed input, Ctrl-C or a lost connection), the usage-reporting settings, notice, opt-outs and events for both programs against a loopback stub (it never contacts the real service), the vendored client, and that the client's and the server's copies have not drifted apart.
+The suite covers the server's and the client's chat loops against mocked sockets and input (binding and retrying, sending and printing messages, and exiting or listening again on closed input, Ctrl-C or a lost connection), the usage-reporting settings, notice, opt-outs and events for both programs against a loopback stub (it never contacts the real service), the vendored client, and that the client's and the server's copies have not drifted apart.
 
 ## Learning Resources
 - https://realpython.com/python-sockets/

@@ -23,7 +23,11 @@ class ChatServer:
                     if self.usage is not None:
                         reportConnected(self.usage)
                     while True:
-                        data = connection.recv(1024)
+                        try:
+                            data = connection.recv(1024)
+                        except ConnectionResetError:
+                            # the client went away abruptly; treat it like a clean close
+                            data = b""
                         if not data:
                             break
                         print(f"Client: {data.decode()!r}")
@@ -34,7 +38,11 @@ class ChatServer:
                             print("\nInput closed. Exiting.")
                             return
                         data = userInput.encode()
-                        connection.sendall(data)
+                        try:
+                            connection.sendall(data)
+                        except (ConnectionResetError, BrokenPipeError):
+                            # the client went away while the reply was being typed
+                            break
 
 if __name__ == "__main__":
     print(" === Chat Server === ")
