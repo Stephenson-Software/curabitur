@@ -107,6 +107,23 @@ class TestChatServer(unittest.TestCase):
         second.bind.assert_called_once_with(("host", 1))
         self.assertEqual(output.count("Listening on host:1..."), 2)
 
+    def test_listens_again_after_the_client_resets_the_connection(self):
+        first, _ = _listeningSocket([ConnectionResetError()])
+        second, _ = _listeningSocket()
+        output, _ = _run(ChatServer("host", 1), [first, second], [])
+        second.bind.assert_called_once_with(("host", 1))
+        self.assertEqual(output.count("Listening on host:1..."), 2)
+
+    def test_listens_again_when_the_reply_cannot_be_sent(self):
+        for error in (ConnectionResetError(), BrokenPipeError()):
+            with self.subTest(error=type(error).__name__):
+                first, connection = _listeningSocket([b"ping"])
+                connection.sendall.side_effect = error
+                second, _ = _listeningSocket()
+                output, _ = _run(ChatServer("host", 1), [first, second], ["pong"])
+                second.bind.assert_called_once_with(("host", 1))
+                self.assertEqual(output.count("Listening on host:1..."), 2)
+
     def test_reports_connected_only_when_usage_reporting_is_on(self):
         usage = object()
         sock, _ = _listeningSocket([b"ping"])
