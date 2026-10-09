@@ -45,8 +45,10 @@ To turn reporting off, any one of these is enough:
   }
   ```
 
-- the environment variable `TRACE_USAGE_REPORTING=off` (also `false`, `0`, `no`), which turns off every program that reports to trace
-- the environment variable `DO_NOT_TRACK=1` (see [consoledonottrack.com](https://consoledonottrack.com))
+- the environment variable `TRACE_USAGE_REPORTING=off` (also `false`, `0`, `no`; case does not matter), which turns off every program that reports to trace
+- the environment variable `DO_NOT_TRACK=1` (also `true`, `yes`; case does not matter; see [consoledonottrack.com](https://consoledonottrack.com))
+
+Any other value, including an empty one, leaves the `settings.json` setting in charge.
 
 The environment variables win over `settings.json`. Under Docker the containers are removed on exit, so a `settings.json` written inside one does not persist; `run_server.sh` and `run_client.sh` pass `TRACE_USAGE_REPORTING`, `DO_NOT_TRACK` and `TRACE_INSTALL_ID` through to the container, so `TRACE_USAGE_REPORTING=off bash run_server.sh` turns reporting off there. For the same reason a container's installation ID file does not persist either: each run gets a new ID unless `TRACE_INSTALL_ID` is set. The `endpoint` and `key` entries in the settings block select where reports go and the key they are sent with. Each program carries its own copy of the client (`src/trace_client.py`, vendored from [trace-client-python](https://github.com/Stephenson-Software/trace-client-python)) and of the settings handling (`src/usage_reporting.py`), because each is built into its own image from its own directory.
 
