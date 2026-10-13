@@ -77,6 +77,15 @@ class TestChatClient(unittest.TestCase):
         output, _ = _run(ChatClient("host", 1), [sock], ["ping", EOFError()])
         self.assertIn("Server: 'pong'", output)
 
+    def test_a_character_split_across_two_recvs_is_decoded_whole(self):
+        # issue #30: "é" is b"\xc3\xa9"; the first chunk ends after its first byte
+        message = ("a" * 1023 + "é").encode("utf-8")
+        sock = MagicMock()
+        sock.recv.side_effect = [message[:1024], message[1024:]]
+        output, _ = _run(ChatClient("host", 1), [sock], ["ping", "ping", EOFError()])
+        self.assertIn("Server: '" + "a" * 1023 + "'", output)
+        self.assertIn("Server: 'é'", output)
+
     def test_retries_refused_and_timed_out_connects_with_a_fresh_socket(self):
         refused, timedOut, good = MagicMock(), MagicMock(), MagicMock()
         refused.connect.side_effect = ConnectionRefusedError("refused")

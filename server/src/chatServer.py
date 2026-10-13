@@ -1,3 +1,4 @@
+import codecs
 import socket
 
 from usage_reporting import reportConnected, startUsageReporting
@@ -20,6 +21,9 @@ class ChatServer:
                 connection, address = s.accept()
                 with connection:
                     print(f"Accepted connection from {address}")
+                    # a multi-byte character can span two recv() chunks; the decoder holds
+                    # the incomplete tail over to the next chunk instead of failing on it
+                    decoder = codecs.getincrementaldecoder("utf-8")()
                     if self.usage is not None:
                         reportConnected(self.usage)
                     while True:
@@ -30,7 +34,7 @@ class ChatServer:
                             data = b""
                         if not data:
                             break
-                        print(f"Client: {data.decode()!r}")
+                        print(f"Client: {decoder.decode(data)!r}")
                         # get response from server
                         try:
                             userInput = input("Server: ")

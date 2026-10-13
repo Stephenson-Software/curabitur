@@ -1,3 +1,4 @@
+import codecs
 import os
 import socket
 import time
@@ -30,6 +31,9 @@ class ChatClient:
         if self.usage is not None:
             reportConnected(self.usage)
 
+        # a multi-byte character can span two recv() chunks; the decoder holds the
+        # incomplete tail over to the next chunk instead of failing on it
+        decoder = codecs.getincrementaldecoder("utf-8")()
         with s:
             while(True):
                 # get user input
@@ -48,7 +52,7 @@ class ChatClient:
                     # an empty recv means the server closed the connection
                     print("Server disconnected. Exiting.")
                     return
-                print(f"Server: {data.decode()!r}")
+                print(f"Server: {decoder.decode(data)!r}")
                 print("")
 
 
