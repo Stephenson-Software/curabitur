@@ -94,6 +94,15 @@ class TestChatServer(unittest.TestCase):
         self.assertIn("Client: 'ping'", output)
         connection.sendall.assert_called_once_with("pöng".encode("utf-8"))
 
+    def test_a_character_split_across_two_recvs_is_decoded_whole(self):
+        # issue #30: "é" is b"\xc3\xa9"; the first chunk ends after its first byte
+        message = ("a" * 1023 + "é").encode("utf-8")
+        sock, _ = _listeningSocket([message[:1024], message[1024:], b""])
+        after, _ = _listeningSocket()
+        output, _ = _run(ChatServer("host", 1), [sock, after], ["pong", "pong"])
+        self.assertIn("Client: '" + "a" * 1023 + "'", output)
+        self.assertIn("Client: 'é'", output)
+
     def test_closed_input_exits_cleanly(self):
         sock, connection = _listeningSocket([b"ping"])
         output, _ = _run(ChatServer("host", 1), [sock], [EOFError()])
