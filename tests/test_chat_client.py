@@ -39,10 +39,11 @@ def _run(client, sockets, inputs):
     return out.getvalue(), reportConnected
 
 
-def _runMain(sockets, inputs, sleep=None):
+def _runMain(sockets, inputs, sleep=None, out=None):
     """Run chatClient.py's __main__ block like _run, with CHAT_SERVER_IP set and usage
-    reporting patched out so nothing is sent. Returns what was printed."""
-    out = io.StringIO()
+    reporting patched out so nothing is sent. Returns what was printed; pass out to read
+    it when the block exits instead of returning."""
+    out = out if out is not None else io.StringIO()
     usage = sys.modules["usage_reporting"]
     with patch.dict(os.environ, {"CHAT_SERVER_IP": "10.0.0.5"}), \
          patch.object(socket, "socket", side_effect=sockets), \
@@ -132,6 +133,18 @@ class TestChatClient(unittest.TestCase):
                                 text=True, timeout=30)
         self.assertEqual(result.returncode, 1)
         self.assertIn("CHAT_SERVER_IP environment variable not set. Exiting.", result.stdout)
+
+    def test_exits_1_when_chat_server_ip_cannot_be_resolved(self):
+        unresolvable = MagicMock()
+        unresolvable.connect.side_effect = socket.gaierror(-2, "Name or service not known")
+        out = io.StringIO()
+        with self.assertRaises(SystemExit) as exited:
+            _runMain([unresolvable], [], out=out)
+        self.assertEqual(exited.exception.code, 1)
+        self.assertIn("Could not resolve CHAT_SERVER_IP '10.0.0.5': Name or service not known. Exiting.",
+                      out.getvalue())
+        self.assertNotIn("Retrying", out.getvalue())
+        unresolvable.close.assert_called_once_with()
 
     def test_ctrl_c_while_retrying_exits_cleanly(self):
         refused = MagicMock()

@@ -27,6 +27,10 @@ class ChatClient:
                 s.close()
                 print(f"Connection failed: {error}. Retrying in 1 second. Attempts Made: {attempts}")
                 time.sleep(1)
+            except socket.gaierror:
+                # the address cannot be resolved, and retrying will not change that
+                s.close()
+                raise
 
         if self.usage is not None:
             reportConnected(self.usage)
@@ -72,3 +76,7 @@ if __name__ == "__main__":
     except KeyboardInterrupt:
         # Ctrl-C at the prompt, in recv() or while retrying; the with block closes the socket
         print("\nInterrupted. Exiting.")
+    except socket.gaierror as error:
+        # a mistyped IP or an unknown host name in CHAT_SERVER_IP
+        print(f"Could not resolve CHAT_SERVER_IP {ip!r}: {error.strerror}. Exiting.")
+        exit(1)
