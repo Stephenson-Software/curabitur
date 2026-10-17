@@ -1,6 +1,7 @@
 """Tests for ChatClient's connect loop and chat loop, and for the CHAT_SERVER_IP check and
 Ctrl-C handling in its __main__ block. socket.socket and input() are patched, so nothing
 here opens a real connection or waits on a terminal."""
+import errno
 import importlib.util
 import io
 import os
@@ -145,6 +146,22 @@ class TestChatClient(unittest.TestCase):
                       out.getvalue())
         self.assertNotIn("Retrying", out.getvalue())
         unresolvable.close.assert_called_once_with()
+
+    def test_exits_1_when_the_host_or_network_is_unreachable(self):
+        # issue #35: these are plain OSErrors, neither TimeoutError nor ConnectionRefusedError
+        for errno_, reason in ((errno.EHOSTUNREACH, "No route to host"),
+                               (errno.ENETUNREACH, "Network is unreachable")):
+            with self.subTest(reason=reason):
+                unreachable = MagicMock()
+                unreachable.connect.side_effect = OSError(errno_, reason)
+                out = io.StringIO()
+                with self.assertRaises(SystemExit) as exited:
+                    _runMain([unreachable], [], out=out)
+                self.assertEqual(exited.exception.code, 1)
+                self.assertIn(f"Could not connect to 10.0.0.5:36578: {reason}. Exiting.",
+                              out.getvalue())
+                self.assertNotIn("Retrying", out.getvalue())
+                unreachable.close.assert_called_once_with()
 
     def test_ctrl_c_while_retrying_exits_cleanly(self):
         refused = MagicMock()

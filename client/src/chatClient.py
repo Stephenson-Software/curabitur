@@ -27,8 +27,9 @@ class ChatClient:
                 s.close()
                 print(f"Connection failed: {error}. Retrying in 1 second. Attempts Made: {attempts}")
                 time.sleep(1)
-            except socket.gaierror:
-                # the address cannot be resolved, and retrying will not change that
+            except OSError:
+                # the address cannot be resolved (socket.gaierror), or the host or network
+                # cannot be reached; report it rather than retrying
                 s.close()
                 raise
 
@@ -79,4 +80,9 @@ if __name__ == "__main__":
     except socket.gaierror as error:
         # a mistyped IP or an unknown host name in CHAT_SERVER_IP
         print(f"Could not resolve CHAT_SERVER_IP {ip!r}: {error.strerror}. Exiting.")
+        exit(1)
+    except OSError as error:
+        # an unreachable host or network, such as an address on a network the client
+        # cannot route to; an OSError raised without an errno has no strerror
+        print(f"Could not connect to {ip}:{port}: {error.strerror or error}. Exiting.")
         exit(1)
