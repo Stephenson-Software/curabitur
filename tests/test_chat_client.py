@@ -158,7 +158,7 @@ class TestChatClient(unittest.TestCase):
                 with self.assertRaises(SystemExit) as exited:
                     _runMain([unreachable], [], out=out)
                 self.assertEqual(exited.exception.code, 1)
-                self.assertIn(f"Could not connect to 10.0.0.5:36578: {reason}. Exiting.",
+                self.assertIn(f"Connection to 10.0.0.5:36578 failed: {reason}. Exiting.",
                               out.getvalue())
                 self.assertNotIn("Retrying", out.getvalue())
                 unreachable.close.assert_called_once_with()

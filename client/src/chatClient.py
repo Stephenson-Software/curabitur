@@ -82,7 +82,7 @@ if __name__ == "__main__":
         print(f"Could not resolve CHAT_SERVER_IP {ip!r}: {error.strerror}. Exiting.")
         exit(1)
     except OSError as error:
-        # an unreachable host or network, such as an address on a network the client
-        # cannot route to; an OSError raised without an errno has no strerror
-        print(f"Could not connect to {ip}:{port}: {error.strerror or error}. Exiting.")
+        # an unreachable host or network when dialing, or a connection that fails mid-chat
+        # in a way other than a reset; an OSError raised without an errno has no strerror
+        print(f"Connection to {ip}:{port} failed: {error.strerror or error}. Exiting.")
         exit(1)
