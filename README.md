@@ -1,6 +1,10 @@
 # Curabitur
 This repository is for practicing socket programming in Python by creating a simple chat application.
 
+![A real curabitur chat: the server in the left pane, the client in the right](docs/images/curabitur-chat.gif)
+
+*A real chat on one machine: the server on the left, the client on the right. The client then closes with Ctrl-D and the server with Ctrl-C.*
+
 ## Naming
 The name of this repository is derived from the Latin word "curabitur" which means "to chat".
 
@@ -68,6 +72,10 @@ The suite covers the server's and the client's chat loops against mocked sockets
 - https://realpython.com/python-sockets/
 - https://docs.python.org/3/howto/sockets.html
 - https://www.geeksforgeeks.org/socket-programming-python/
+
+## How the screenshot was captured
+
+`docs/images/curabitur-chat.gif` was recorded on 2026-10-18 from real runs of `python3 server/src/chatServer.py` and `python3 client/src/chatClient.py` (Python 3.12), side by side in two tmux panes, with `TRACE_USAGE_REPORTING=off` set so that no usage reports were sent. The messages were typed into the panes by a script, and the recorded terminal output was rendered to an image with [pyte](https://github.com/selectel/pyte) and [Pillow](https://python-pillow.org/). Nothing in the output was edited; only the window frame was added.
 
 ## License
 This project is licensed under the Stephenson Software Non-Commercial License (Stephenson-NC). See [LICENSE](LICENSE) for the terms, which permit non-commercial use only. The full license text is published at https://github.com/Stephenson-Software/stephenson-nc-license.
