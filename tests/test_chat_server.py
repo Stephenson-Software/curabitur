@@ -1,6 +1,7 @@
-"""Tests for ChatServer's accept loop and chat loop, and for the Ctrl-C handling in its
-__main__ block. socket.socket and input() are patched, so nothing here binds a real port or
+"""Tests for ChatServer's accept loop and chat loop, and for the Ctrl-C and OSError handling
+in its __main__ block. socket.socket and input() are patched, so nothing here binds a real port or
 waits on a terminal."""
+import errno
 import importlib.util
 import io
 import os
@@ -59,10 +60,11 @@ def _run(server, sockets, inputs):
     return out.getvalue(), reportConnected
 
 
-def _runMain(sockets, inputs):
+def _runMain(sockets, inputs, out=None):
     """Run chatServer.py's __main__ block like _run, with the host lookup and usage reporting
-    patched out so nothing resolves a name or is sent. Returns what was printed."""
-    out = io.StringIO()
+    patched out so nothing resolves a name or is sent. Returns what was printed; pass out to
+    read it when the block exits instead of returning."""
+    out = out if out is not None else io.StringIO()
     usage = sys.modules["usage_reporting"]
     with patch.object(socket, "socket", side_effect=sockets), \
          patch.object(socket, "getaddrinfo", return_value=[(None, None, None, None, ("10.0.0.5", 0))]), \
@@ -154,6 +156,19 @@ class TestChatServer(unittest.TestCase):
         output = _runMain([sock], [KeyboardInterrupt()])
         self.assertIn("Interrupted. Exiting.", output)
         connection.__exit__.assert_called_once()
+        sock.__exit__.assert_called_once()
+
+    def test_exits_1_when_the_port_cannot_be_bound(self):
+        # issue #37: another server already listening on the port
+        sock, _ = _listeningSocket()
+        sock.bind.side_effect = OSError(errno.EADDRINUSE, "Address already in use")
+        out = io.StringIO()
+        with self.assertRaises(SystemExit) as exited:
+            _runMain([sock], [], out=out)
+        self.assertEqual(exited.exception.code, 1)
+        self.assertIn("Server on 10.0.0.5:36578 failed: Address already in use. Exiting.",
+                      out.getvalue())
+        sock.accept.assert_not_called()
         sock.__exit__.assert_called_once()
 
     def test_server_and_client_use_the_same_port(self):

@@ -28,6 +28,8 @@ If the server goes away while the client is connected, the client reports `Serve
 
 If `CHAT_SERVER_IP` holds an address that cannot be resolved, such as a mistyped IP or an unknown host name, the client reports `Could not resolve CHAT_SERVER_IP '<value>': <reason>. Exiting.` and exits with status `1` rather than retrying. Likewise, if the server's host or network cannot be reached ("No route to host", "Network is unreachable"), the client reports `Connection to <IP>:36578 failed: <reason>. Exiting.` and exits with status `1`. A server that refuses the connection, or does not answer before the connection times out, is retried with a one-second pause between attempts until it is reachable.
 
+If the server cannot listen on its port, most often because another server is already running on it, it reports `Server on <IP>:36578 failed: <reason>. Exiting.` (for example `Address already in use`) and exits with status `1`.
+
 ## Usage reporting
 Usage reporting is on by default: the server and the client each send the program's name (`curabitur`), its version and the events `startup` (when the program starts) and `connected` (when the server accepts a client, or the client reaches a server) to [trace](https://github.com/Stephenson-Software/trace) at `https://trace.danielstephenson.dev`. Every event carries a `role` tag saying which of the two sent it (`server` or `client`), and a random installation ID (the tag `install`) so installations can be counted rather than events. Nothing about you, your machine, your IP address, the addresses you connect to or the messages is sent. The report is made from a background thread, never blocks the chat, and is dropped silently if the service is unreachable.
 
@@ -60,7 +62,7 @@ Details: https://github.com/Stephenson-Software/trace#usage-reporting
 ```
 python3 -m unittest discover -s tests
 ```
-The suite covers the server's and the client's chat loops against mocked sockets and input (binding and retrying, sending and printing messages, exiting on an address that cannot be resolved or a host that cannot be reached, and exiting or listening again on closed input, Ctrl-C or a lost connection), the usage-reporting settings, notice, opt-outs and events for both programs against a loopback stub (it never contacts the real service), the vendored client, and that the client's and the server's copies have not drifted apart.
+The suite covers the server's and the client's chat loops against mocked sockets and input (binding and retrying, sending and printing messages, exiting on an address that cannot be resolved, a host that cannot be reached or a port that is already in use, and exiting or listening again on closed input, Ctrl-C or a lost connection), the usage-reporting settings, notice, opt-outs and events for both programs against a loopback stub (it never contacts the real service), the vendored client, and that the client's and the server's copies have not drifted apart.
 
 ## Learning Resources
 - https://realpython.com/python-sockets/
