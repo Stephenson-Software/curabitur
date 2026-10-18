@@ -59,3 +59,8 @@ if __name__ == "__main__":
     except KeyboardInterrupt:
         # Ctrl-C at the prompt, in accept() or in recv(); the with blocks close the sockets
         print("\nInterrupted. Exiting.")
+    except OSError as error:
+        # the port is already in use or the address cannot be bound, or a connection fails
+        # in a way other than a reset; an OSError raised without an errno has no strerror
+        print(f"Server on {ip}:{port} failed: {error.strerror or error}. Exiting.")
+        exit(1)
