@@ -1,5 +1,5 @@
-"""Tests for ChatServer's accept loop and chat loop, and for the Ctrl-C handling in its
-__main__ block. socket.socket and input() are patched, so nothing here binds a real port or
+"""Tests for ChatServer's accept loop and chat loop, and for the Ctrl-C and OSError handling
+in its __main__ block. socket.socket and input() are patched, so nothing here binds a real port or
 waits on a terminal."""
 import errno
 import importlib.util

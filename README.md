@@ -62,7 +62,7 @@ Details: https://github.com/Stephenson-Software/trace#usage-reporting
 ```
 python3 -m unittest discover -s tests
 ```
-The suite covers the server's and the client's chat loops against mocked sockets and input (binding and retrying, sending and printing messages, exiting on an address that cannot be resolved or a host that cannot be reached, and exiting or listening again on closed input, Ctrl-C or a lost connection), the usage-reporting settings, notice, opt-outs and events for both programs against a loopback stub (it never contacts the real service), the vendored client, and that the client's and the server's copies have not drifted apart.
+The suite covers the server's and the client's chat loops against mocked sockets and input (binding and retrying, sending and printing messages, exiting on an address that cannot be resolved, a host that cannot be reached or a port that is already in use, and exiting or listening again on closed input, Ctrl-C or a lost connection), the usage-reporting settings, notice, opt-outs and events for both programs against a loopback stub (it never contacts the real service), the vendored client, and that the client's and the server's copies have not drifted apart.
 
 ## Learning Resources
 - https://realpython.com/python-sockets/
