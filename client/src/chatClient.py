@@ -41,12 +41,15 @@ class ChatClient:
         decoder = codecs.getincrementaldecoder("utf-8")()
         with s:
             while(True):
-                # get user input
-                try:
-                    userInput = input("Client: ")
-                except EOFError:
-                    print("\nInput closed. Exiting.")
-                    return
+                # get user input; an empty message would put nothing on the wire and leave
+                # both sides waiting for the other, so prompt again instead of sending it
+                userInput = ""
+                while not userInput:
+                    try:
+                        userInput = input("Client: ")
+                    except EOFError:
+                        print("\nInput closed. Exiting.")
+                        return
                 try:
                     s.sendall(userInput.encode())
                     data = s.recv(1024)

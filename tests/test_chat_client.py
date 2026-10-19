@@ -99,6 +99,13 @@ class TestChatClient(unittest.TestCase):
         self.assertIn("Attempts Made: 1", output)
         self.assertIn("Attempts Made: 2", output)
 
+    def test_an_empty_message_is_not_sent_and_the_prompt_is_repeated(self):
+        # issue #40: sendall(b"") puts nothing on the wire, so both sides would wait forever
+        sock = MagicMock()
+        sock.recv.return_value = b"pong"
+        _run(ChatClient("host", 1), [sock], ["", "", "ping", EOFError()])
+        sock.sendall.assert_called_once_with(b"ping")
+
     def test_closed_input_exits_cleanly(self):
         sock = MagicMock()
         output, _ = _run(ChatClient("host", 1), [sock], [EOFError()])
