@@ -23,6 +23,9 @@ The name of this repository is derived from the Latin word "curabitur" which mea
 5. Open another terminal and navigate to the root of the repository
 6. Run `bash run_client.sh <IP>` in the second terminal, using the address from step 4
 
+### Taking Turns
+The client speaks first, then the two programs take turns: each sends one message and waits for the other to answer. Pressing Enter on an empty line sends nothing and shows the prompt again, since the other side would otherwise wait for a message that never arrives.
+
 ### Ending a Session
 Press Ctrl-D at either program's prompt to close its input. Both the server and the client report `Input closed. Exiting.` and shut down cleanly.
 

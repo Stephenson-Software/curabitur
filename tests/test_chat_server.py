@@ -105,6 +105,13 @@ class TestChatServer(unittest.TestCase):
         self.assertIn("Client: '" + "a" * 1023 + "'", output)
         self.assertIn("Client: 'é'", output)
 
+    def test_an_empty_reply_is_not_sent_and_the_prompt_is_repeated(self):
+        # issue #40: sendall(b"") puts nothing on the wire, so both sides would wait forever
+        sock, connection = _listeningSocket([b"ping", b""])
+        after, _ = _listeningSocket()
+        _run(ChatServer("host", 1), [sock, after], ["", "", "pong"])
+        connection.sendall.assert_called_once_with(b"pong")
+
     def test_closed_input_exits_cleanly(self):
         sock, connection = _listeningSocket([b"ping"])
         output, _ = _run(ChatServer("host", 1), [sock], [EOFError()])

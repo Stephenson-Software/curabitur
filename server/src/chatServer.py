@@ -35,12 +35,15 @@ class ChatServer:
                         if not data:
                             break
                         print(f"Client: {decoder.decode(data)!r}")
-                        # get response from server
-                        try:
-                            userInput = input("Server: ")
-                        except EOFError:
-                            print("\nInput closed. Exiting.")
-                            return
+                        # get response from server; an empty reply would put nothing on the
+                        # wire and leave both sides waiting for the other, so prompt again
+                        userInput = ""
+                        while not userInput:
+                            try:
+                                userInput = input("Server: ")
+                            except EOFError:
+                                print("\nInput closed. Exiting.")
+                                return
                         data = userInput.encode()
                         try:
                             connection.sendall(data)
