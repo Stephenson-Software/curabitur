@@ -26,6 +26,8 @@ The name of this repository is derived from the Latin word "curabitur" which mea
 ### Taking Turns
 The client speaks first, then the two programs take turns: each sends one message and waits for the other to answer. Pressing Enter on an empty line sends nothing and shows the prompt again, since the other side would otherwise wait for a message that never arrives.
 
+Keep each message to 1024 bytes or fewer (1024 plain ASCII characters; fewer when the message has accented letters or emoji, which take more than one byte each). Each program reads a turn with a single 1024-byte read, so a longer message arrives in pieces that the other side treats as separate turns. The turns then fall out of step, and replies show up one turn late or joined together.
+
 ### Ending a Session
 Press Ctrl-D at either program's prompt to close its input. Both the server and the client report `Input closed. Exiting.` and shut down cleanly.
 
