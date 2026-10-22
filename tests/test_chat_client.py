@@ -126,6 +126,13 @@ class TestChatClient(unittest.TestCase):
                 output, _ = _run(ChatClient("host", 1), [sock], ["ping"])
                 self.assertIn("Server disconnected. Exiting.", output)
 
+    def test_reset_while_waiting_for_the_reply_reports_the_server_disconnected(self):
+        sock = MagicMock()
+        sock.recv.side_effect = ConnectionResetError()
+        output, _ = _run(ChatClient("host", 1), [sock], ["ping"])
+        sock.sendall.assert_called_once_with(b"ping")
+        self.assertIn("Server disconnected. Exiting.", output)
+
     def test_reports_connected_only_when_usage_reporting_is_on(self):
         usage = object()
         _, reportConnected = _run(ChatClient("host", 1, usage), [MagicMock()], [EOFError()])
@@ -169,6 +176,22 @@ class TestChatClient(unittest.TestCase):
                               out.getvalue())
                 self.assertNotIn("Retrying", out.getvalue())
                 unreachable.close.assert_called_once_with()
+
+    def test_exits_1_when_the_connection_fails_mid_chat(self):
+        # an OSError other than a reset is not a disconnect; an OSError without an errno has
+        # no strerror, so the message falls back to the error itself
+        for error, reason in ((OSError(errno.ETIMEDOUT, "Connection timed out"), "Connection timed out"),
+                              (OSError("no errno"), "no errno")):
+            with self.subTest(reason=reason):
+                sock = MagicMock()
+                sock.recv.side_effect = error
+                out = io.StringIO()
+                with self.assertRaises(SystemExit) as exited:
+                    _runMain([sock], ["ping"], out=out)
+                self.assertEqual(exited.exception.code, 1)
+                self.assertIn(f"Connection to 10.0.0.5:36578 failed: {reason}. Exiting.",
+                              out.getvalue())
+                sock.__exit__.assert_called_once()
 
     def test_ctrl_c_while_retrying_exits_cleanly(self):
         refused = MagicMock()

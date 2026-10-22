@@ -178,6 +178,21 @@ class TestChatServer(unittest.TestCase):
         sock.accept.assert_not_called()
         sock.__exit__.assert_called_once()
 
+    def test_exits_1_when_the_connection_fails_mid_chat(self):
+        # an OSError other than a reset is not a disconnect; an OSError without an errno has
+        # no strerror, so the message falls back to the error itself
+        for error, reason in ((OSError(errno.ETIMEDOUT, "Connection timed out"), "Connection timed out"),
+                              (OSError("no errno"), "no errno")):
+            with self.subTest(reason=reason):
+                sock, connection = _listeningSocket([error])
+                out = io.StringIO()
+                with self.assertRaises(SystemExit) as exited:
+                    _runMain([sock], [], out=out)
+                self.assertEqual(exited.exception.code, 1)
+                self.assertIn(f"Server on 10.0.0.5:36578 failed: {reason}. Exiting.", out.getvalue())
+                connection.__exit__.assert_called_once()
+                sock.__exit__.assert_called_once()
+
     def test_server_and_client_use_the_same_port(self):
         ports = []
         for role, name in (("server", "chatServer.py"), ("client", "chatClient.py")):
