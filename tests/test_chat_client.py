@@ -207,6 +207,15 @@ class TestChatClient(unittest.TestCase):
         sock.connect.assert_called_once_with(("10.0.0.5", 36578))
         sock.__exit__.assert_called_once()
 
+    def test_ctrl_c_while_waiting_for_the_reply_exits_cleanly(self):
+        sock = MagicMock()
+        sock.recv.side_effect = KeyboardInterrupt()
+        output = _runMain([sock], ["ping"])
+        self.assertIn("Interrupted. Exiting.", output)
+        self.assertNotIn("Server disconnected", output)
+        sock.sendall.assert_called_once_with(b"ping")
+        sock.__exit__.assert_called_once()
+
 
 if __name__ == "__main__":
     unittest.main()
