@@ -165,6 +165,14 @@ class TestChatServer(unittest.TestCase):
         connection.__exit__.assert_called_once()
         sock.__exit__.assert_called_once()
 
+    def test_ctrl_c_while_waiting_for_the_clients_message_exits_cleanly(self):
+        sock, connection = _listeningSocket([KeyboardInterrupt()])
+        output = _runMain([sock], [])
+        self.assertIn("Interrupted. Exiting.", output)
+        self.assertNotIn("Server:", output)
+        connection.__exit__.assert_called_once()
+        sock.__exit__.assert_called_once()
+
     def test_exits_1_when_the_port_cannot_be_bound(self):
         # issue #37: another server already listening on the port
         sock, _ = _listeningSocket()
