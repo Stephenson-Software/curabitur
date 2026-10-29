@@ -53,7 +53,13 @@ class ChatServer:
 
 if __name__ == "__main__":
     print(" === Chat Server === ")
-    ip = socket.getaddrinfo(socket.gethostname(), 0, socket.AF_INET)[0][4][0]
+    hostname = socket.gethostname()
+    try:
+        ip = socket.getaddrinfo(hostname, 0, socket.AF_INET)[0][4][0]
+    except socket.gaierror as error:
+        # this machine's host name has no IPv4 address in /etc/hosts or DNS
+        print(f"Could not resolve this machine's host name {hostname!r}: {error.strerror}. Exiting.")
+        exit(1)
     usage = startUsageReporting()
     port = 36578
     server = ChatServer(ip, port, usage)

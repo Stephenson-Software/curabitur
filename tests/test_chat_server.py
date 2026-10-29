@@ -60,14 +60,17 @@ def _run(server, sockets, inputs):
     return out.getvalue(), reportConnected
 
 
-def _runMain(sockets, inputs, out=None):
+def _runMain(sockets, inputs, out=None, lookupError=None):
     """Run chatServer.py's __main__ block like _run, with the host lookup and usage reporting
-    patched out so nothing resolves a name or is sent. Returns what was printed; pass out to
-    read it when the block exits instead of returning."""
+    patched out so nothing resolves a name or is sent; with lookupError, the lookup of the host
+    name "chat-host" raises it. Returns what was printed; pass out to read it when the block
+    exits instead of returning."""
     out = out if out is not None else io.StringIO()
     usage = sys.modules["usage_reporting"]
     with patch.object(socket, "socket", side_effect=sockets), \
-         patch.object(socket, "getaddrinfo", return_value=[(None, None, None, None, ("10.0.0.5", 0))]), \
+         patch.object(socket, "gethostname", return_value="chat-host"), \
+         patch.object(socket, "getaddrinfo", side_effect=lookupError,
+                      return_value=[(None, None, None, None, ("10.0.0.5", 0))]), \
          patch("builtins.input", side_effect=inputs), \
          patch.object(usage, "startUsageReporting", return_value=None), \
          redirect_stdout(out):
@@ -185,6 +188,16 @@ class TestChatServer(unittest.TestCase):
                       out.getvalue())
         sock.accept.assert_not_called()
         sock.__exit__.assert_called_once()
+
+    def test_exits_1_when_the_host_name_cannot_be_resolved(self):
+        # issue #48: no socket is opened, since the lookup comes before listen()
+        out = io.StringIO()
+        with self.assertRaises(SystemExit) as exited:
+            _runMain([], [], out=out, lookupError=socket.gaierror(-2, "Name or service not known"))
+        self.assertEqual(exited.exception.code, 1)
+        self.assertIn("Could not resolve this machine's host name 'chat-host': "
+                      "Name or service not known. Exiting.", out.getvalue())
+        self.assertNotIn("Listening on", out.getvalue())
 
     def test_exits_1_when_the_connection_fails_mid_chat(self):
         # an OSError other than a reset is not a disconnect; an OSError without an errno has
