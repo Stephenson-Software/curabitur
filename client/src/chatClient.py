@@ -67,8 +67,9 @@ class ChatClient:
 if __name__ == "__main__":
     print(" === Chat Client === ")
     ip = os.environ.get("CHAT_SERVER_IP")
-    
-    if ip is None:
+
+    # an empty value would dial this machine and retry forever, so treat it as unset
+    if not ip:
         print("CHAT_SERVER_IP environment variable not set. Exiting.")
         exit(1)
     
