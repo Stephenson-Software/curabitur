@@ -149,6 +149,17 @@ class TestChatClient(unittest.TestCase):
         self.assertEqual(result.returncode, 1)
         self.assertIn("CHAT_SERVER_IP environment variable not set. Exiting.", result.stdout)
 
+    def test_exits_1_when_chat_server_ip_is_empty(self):
+        # issue #50: connect(("", port)) dials this machine, so an empty value used to retry forever
+        # reporting is turned off in case a regression gets past the check and starts it
+        env = dict(os.environ, CHAT_SERVER_IP="", TRACE_USAGE_REPORTING="off")
+        result = subprocess.run([sys.executable, os.path.join(_SRC, "chatClient.py")],
+                                env=env, stdin=subprocess.DEVNULL, capture_output=True,
+                                text=True, timeout=30)
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("CHAT_SERVER_IP environment variable not set. Exiting.", result.stdout)
+        self.assertNotIn("Connecting to", result.stdout)
+
     def test_exits_1_when_chat_server_ip_cannot_be_resolved(self):
         unresolvable = MagicMock()
         unresolvable.connect.side_effect = socket.gaierror(-2, "Name or service not known")
