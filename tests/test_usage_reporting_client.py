@@ -183,6 +183,42 @@ class TestUsageReportingSettings(unittest.TestCase):
         self.assertEqual("pinned-id", client.install_id)
         self.assertFalse(os.path.exists(installIdFile()))
 
+    def test_trace_install_id_is_sent_without_surrounding_whitespace(self):
+        with patch.dict(os.environ, {"TRACE_INSTALL_ID": "  pinned-id\n"}):
+            client = buildClient({"enabled": True})
+        client.close()
+
+        self.assertEqual("pinned-id", client.install_id)
+
+    def test_blank_trace_install_id_falls_back_to_the_file(self):
+        for value in ("", "   "):
+            with self.subTest(value=value), patch.dict(os.environ, {"TRACE_INSTALL_ID": value}):
+                client = buildClient({"enabled": True})
+                client.close()
+
+                with open(installIdFile(), "r") as f:
+                    self.assertEqual(f.readline().strip(), client.install_id)
+                self.assertTrue(client.install_id)
+
+    def test_trace_install_id_of_255_characters_is_sent(self):
+        with patch.dict(os.environ, {"TRACE_INSTALL_ID": "x" * 255}):
+            client = buildClient({"enabled": True})
+        client.close()
+
+        self.assertIsNone(client.disabled_reason)
+        self.assertEqual("x" * 255, client.install_id)
+
+    def test_trace_install_id_over_255_characters_turns_reporting_off(self):
+        # characterizes the current behavior; whether it is intended is #52
+        with patch.dict(os.environ, {"TRACE_INSTALL_ID": "x" * 256}):
+            client = buildClient({"enabled": True})
+        self.assertFalse(client.enabled)
+        client.close()
+
+        self.assertEqual("config", client.disabled_reason)
+        self.assertIsNone(client.install_id)
+        self.assertFalse(os.path.exists(installIdFile()))
+
     def test_installation_id_file_follows_the_platform(self):
         with patch.dict(os.environ, {"HOME": "/h", "APPDATA": "/appdata"}):
             os.environ.pop("XDG_DATA_HOME", None)
