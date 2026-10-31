@@ -48,7 +48,7 @@ Usage reporting is on by default: the server and the client each send the progra
 
 The first launch of each program writes a `settings.json` next to its `src/` directory (`server/settings.json`, `client/settings.json`) and prints a one-line notice.
 
-The installation ID is a random UUID kept in a file named `trace-install-id` in the user data directory, shared by the server and the client on the same machine: `~/.local/share/curabitur/` on Linux (or `$XDG_DATA_HOME/curabitur/`), `~/Library/Application Support/curabitur/` on macOS and `%APPDATA%\curabitur\` on Windows. It identifies no person, account or address; delete the file to get a new one. Setting the environment variable `TRACE_INSTALL_ID` sends that value instead and leaves the file alone. The file is only created while reporting is on, so every opt-out below also stops it.
+The installation ID is a random UUID kept in a file named `trace-install-id` in the user data directory, shared by the server and the client on the same machine: `~/.local/share/curabitur/` on Linux (or `$XDG_DATA_HOME/curabitur/`), `~/Library/Application Support/curabitur/` on macOS and `%APPDATA%\curabitur\` on Windows. It identifies no person, account or address; delete the file to get a new one. Setting the environment variable `TRACE_INSTALL_ID` sends that value instead, without surrounding whitespace, and leaves the file alone. An empty or whitespace-only value is ignored and the file is used. A value longer than 255 characters turns usage reporting off, with no message. The file is only created while reporting is on, so every opt-out below also stops it.
 
 To turn reporting off, any one of these is enough:
 
