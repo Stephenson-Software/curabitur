@@ -22,8 +22,9 @@ class ChatServer:
                 with connection:
                     print(f"Accepted connection from {address}")
                     # a multi-byte character can span two recv() chunks; the decoder holds
-                    # the incomplete tail over to the next chunk instead of failing on it
-                    decoder = codecs.getincrementaldecoder("utf-8")()
+                    # the incomplete tail over to the next chunk instead of failing on it;
+                    # bytes that can never be valid UTF-8 are shown as a replacement character
+                    decoder = codecs.getincrementaldecoder("utf-8")(errors="replace")
                     if self.usage is not None:
                         reportConnected(self.usage)
                     while True:
@@ -37,14 +38,17 @@ class ChatServer:
                         print(f"Client: {decoder.decode(data)!r}")
                         # get response from server; an empty reply would put nothing on the
                         # wire and leave both sides waiting for the other, so prompt again
-                        userInput = ""
-                        while not userInput:
+                        data = b""
+                        while not data:
                             try:
-                                userInput = input("Server: ")
+                                data = input("Server: ").encode()
                             except EOFError:
                                 print("\nInput closed. Exiting.")
                                 return
-                        data = userInput.encode()
+                            except UnicodeError:
+                                # a line that is not valid text fails in input() or in encode(),
+                                # depending on the locale
+                                print("That line is not valid text. Type it again.")
                         try:
                             connection.sendall(data)
                         except (ConnectionResetError, BrokenPipeError):

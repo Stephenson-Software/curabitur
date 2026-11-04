@@ -28,6 +28,8 @@ The client speaks first, then the two programs take turns: each sends one messag
 
 Keep each message to 1024 bytes or fewer (1024 plain ASCII characters; fewer when the message has accented letters or emoji, which take more than one byte each). Each program reads a turn with a single 1024-byte read, so a longer message arrives in pieces that the other side treats as separate turns. The turns then fall out of step, and replies show up one turn late or joined together.
 
+Messages are UTF-8. Received bytes that are not valid UTF-8 are shown as the replacement character `�`, and the chat carries on. A typed line that is not valid text is not sent: the program reports `That line is not valid text. Type it again.` and shows the prompt again.
+
 ### Ending a Session
 Press Ctrl-D at either program's prompt to close its input. Both the server and the client report `Input closed. Exiting.` and shut down cleanly.
 

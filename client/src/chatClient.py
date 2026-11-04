@@ -37,21 +37,26 @@ class ChatClient:
             reportConnected(self.usage)
 
         # a multi-byte character can span two recv() chunks; the decoder holds the
-        # incomplete tail over to the next chunk instead of failing on it
-        decoder = codecs.getincrementaldecoder("utf-8")()
+        # incomplete tail over to the next chunk instead of failing on it; bytes that can
+        # never be valid UTF-8 are shown as a replacement character
+        decoder = codecs.getincrementaldecoder("utf-8")(errors="replace")
         with s:
             while(True):
                 # get user input; an empty message would put nothing on the wire and leave
                 # both sides waiting for the other, so prompt again instead of sending it
-                userInput = ""
-                while not userInput:
+                data = b""
+                while not data:
                     try:
-                        userInput = input("Client: ")
+                        data = input("Client: ").encode()
                     except EOFError:
                         print("\nInput closed. Exiting.")
                         return
+                    except UnicodeError:
+                        # a line that is not valid text fails in input() or in encode(),
+                        # depending on the locale
+                        print("That line is not valid text. Type it again.")
                 try:
-                    s.sendall(userInput.encode())
+                    s.sendall(data)
                     data = s.recv(1024)
                 except (ConnectionResetError, BrokenPipeError):
                     # the server went away abruptly between prompts

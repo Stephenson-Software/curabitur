@@ -108,6 +108,23 @@ class TestChatServer(unittest.TestCase):
         self.assertIn("Client: '" + "a" * 1023 + "'", output)
         self.assertIn("Client: 'é'", output)
 
+    def test_bytes_that_are_not_utf8_are_shown_as_replacement_characters(self):
+        sock, connection = _listeningSocket([b"\xffbad", b""])
+        after, _ = _listeningSocket()
+        output, _ = _run(ChatServer("host", 1), [sock, after], ["pong"])
+        self.assertIn("Client: '�bad'", output)
+        connection.sendall.assert_called_once_with(b"pong")
+
+    def test_a_reply_that_is_not_valid_text_is_not_sent_and_the_prompt_is_repeated(self):
+        undecodable = UnicodeDecodeError("utf-8", b"\xff", 0, 1, "invalid start byte")
+        for bad in (undecodable, "\udcff"):
+            with self.subTest(bad=bad):
+                sock, connection = _listeningSocket([b"ping", b""])
+                after, _ = _listeningSocket()
+                output, _ = _run(ChatServer("host", 1), [sock, after], [bad, "pong"])
+                self.assertIn("That line is not valid text. Type it again.", output)
+                connection.sendall.assert_called_once_with(b"pong")
+
     def test_an_empty_reply_is_not_sent_and_the_prompt_is_repeated(self):
         # issue #40: sendall(b"") puts nothing on the wire, so both sides would wait forever
         sock, connection = _listeningSocket([b"ping", b""])

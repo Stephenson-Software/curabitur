@@ -88,6 +88,22 @@ class TestChatClient(unittest.TestCase):
         self.assertIn("Server: '" + "a" * 1023 + "'", output)
         self.assertIn("Server: 'é'", output)
 
+    def test_bytes_that_are_not_utf8_are_shown_as_replacement_characters(self):
+        sock = MagicMock()
+        sock.recv.return_value = b"\xffbad"
+        output, _ = _run(ChatClient("host", 1), [sock], ["ping", EOFError()])
+        self.assertIn("Server: '�bad'", output)
+
+    def test_a_message_that_is_not_valid_text_is_not_sent_and_the_prompt_is_repeated(self):
+        undecodable = UnicodeDecodeError("utf-8", b"\xff", 0, 1, "invalid start byte")
+        for bad in (undecodable, "\udcff"):
+            with self.subTest(bad=bad):
+                sock = MagicMock()
+                sock.recv.return_value = b"pong"
+                output, _ = _run(ChatClient("host", 1), [sock], [bad, "ping", EOFError()])
+                self.assertIn("That line is not valid text. Type it again.", output)
+                sock.sendall.assert_called_once_with(b"ping")
+
     def test_retries_refused_and_timed_out_connects_with_a_fresh_socket(self):
         refused, timedOut, good = MagicMock(), MagicMock(), MagicMock()
         refused.connect.side_effect = ConnectionRefusedError("refused")
