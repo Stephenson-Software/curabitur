@@ -161,6 +161,58 @@ class TestUsageReportingSettings(unittest.TestCase):
         with open(self.settingsFile, "r") as f:
             self.assertEqual("{not json", f.read(), "a broken settings file must not be overwritten")
 
+    def test_settings_that_are_not_a_json_object_turn_reporting_off_and_are_left_alone(self):
+        for content in ("[]", "5"):
+            with self.subTest(content=content):
+                self.logged.clear()
+                with open(self.settingsFile, "w") as f:
+                    f.write(content)
+
+                section = loadSettings(self.settingsFile, self.log)
+
+                self.assertIsNone(section)
+                self.assertEqual(1, len(self.logged))
+                self.assertIn("settings file is not a JSON object", self.logged[0])
+                self.assertIn("usage reporting is off", self.logged[0])
+                with open(self.settingsFile, "r") as f:
+                    self.assertEqual(content, f.read())
+
+    def test_settings_path_that_cannot_be_opened_turns_reporting_off(self):
+        os.mkdir(self.settingsFile)
+
+        section = loadSettings(self.settingsFile, self.log)
+
+        self.assertIsNone(section)
+        self.assertEqual(1, len(self.logged))
+        self.assertIn("Could not read " + self.settingsFile, self.logged[0])
+        self.assertIn("usage reporting is off", self.logged[0])
+
+    def test_settings_file_that_cannot_be_written_warns_and_keeps_the_defaults(self):
+        settingsFile = os.path.join(self.tempDir.name, "no-such-directory", "settings.json")
+
+        section = loadSettings(settingsFile, self.log)
+
+        self.assertEqual({"enabled": True, "endpoint": DEFAULT_ENDPOINT, "key": DEFAULT_KEY}, section)
+        self.assertEqual(2, len(self.logged))
+        self.assertEqual(FIRST_RUN_NOTICE, self.logged[0])
+        self.assertIn("Could not write " + settingsFile, self.logged[1])
+        self.assertIn("the notice above will be shown again next time", self.logged[1])
+        self.assertFalse(os.path.exists(settingsFile))
+
+    def test_a_block_that_is_not_an_object_is_replaced_by_the_enabled_defaults(self):
+        # characterizes the current behavior, even for false; whether it is intended is #58
+        for block in (False, None, "off"):
+            with self.subTest(block=block):
+                self.logged.clear()
+                with open(self.settingsFile, "w") as f:
+                    json.dump({"usage_reporting": block}, f)
+
+                section = loadSettings(self.settingsFile, self.log)
+
+                self.assertEqual({"enabled": True, "endpoint": DEFAULT_ENDPOINT, "key": DEFAULT_KEY}, section)
+                self.assertEqual([FIRST_RUN_NOTICE], self.logged)
+                self.assertEqual({"usage_reporting": section}, self.readSettingsFile())
+
     def test_installation_id_is_kept_under_the_user_data_dir_and_reused(self):
         with patch("server_usage_reporting.sys.platform", "linux"), \
                 patch.dict(os.environ, {"XDG_DATA_HOME": os.path.join(self.tempDir.name, "xdg")}):
@@ -230,6 +282,46 @@ class TestUsageReportingSettings(unittest.TestCase):
                                               "trace-install-id"), installIdFile())
             with patch("server_usage_reporting.sys.platform", "win32"):
                 self.assertEqual(os.path.join("/appdata", "curabitur", "trace-install-id"), installIdFile())
+
+    def test_blank_user_data_variables_fall_back_to_the_platform_default(self):
+        with patch.dict(os.environ, {"HOME": "/h", "USERPROFILE": "/h", "APPDATA": "  ", "XDG_DATA_HOME": "  "}):
+            with patch("server_usage_reporting.sys.platform", "linux"):
+                self.assertEqual(os.path.join("/h", ".local", "share", "curabitur", "trace-install-id"),
+                                 installIdFile())
+            with patch("server_usage_reporting.sys.platform", "win32"):
+                self.assertEqual(os.path.join("/h", "AppData", "Roaming", "curabitur", "trace-install-id"),
+                                 installIdFile())
+
+    def test_a_block_without_enabled_leaves_reporting_on(self):
+        client = buildClient({})
+        self.addCleanup(client.close)
+
+        self.assertTrue(client.enabled)
+        self.assertIsNone(client.disabled_reason)
+
+    def test_enabled_is_read_for_truthiness(self):
+        # characterizes the current behavior; the quoted "false" leaving reporting on is #56
+        for value, expected in ((None, False), (0, False), ("", False), (1, True), ("false", True)):
+            with self.subTest(value=value):
+                client = buildClient({"enabled": value})
+                self.addCleanup(client.close)
+
+                self.assertEqual(expected, client.enabled)
+
+    def test_empty_endpoint_and_key_fall_back_to_the_shipped_defaults(self):
+        client = buildClient({"enabled": True, "endpoint": "", "key": ""})
+        client.close()
+
+        self.assertEqual(DEFAULT_ENDPOINT + "/api/metrics", client._endpoint)
+        self.assertEqual(DEFAULT_KEY, client._key)
+
+    def test_endpoint_and_key_that_are_not_strings_are_used_as_text(self):
+        client = buildClient({"enabled": True, "endpoint": 5, "key": 7})
+        self.addCleanup(client.close)
+
+        self.assertTrue(client.enabled)
+        self.assertEqual("5/api/metrics", client._endpoint)
+        self.assertEqual("7", client._key)
 
     def test_missing_endpoint_and_key_fall_back_to_the_shipped_defaults(self):
         client = buildClient({"enabled": True})
@@ -311,6 +403,15 @@ class TestStartupEvent(unittest.TestCase):
         self.assertEqual({"application": "curabitur", "name": "connected",
                           "tags": {"role": "server", "version": VERSION, "install": client.install_id}},
                          self.requests[1]["body"])
+
+    def test_client_is_closed_when_the_program_exits(self):
+        self.writeSettings(True)
+
+        with patch("server_usage_reporting.atexit") as atexit:
+            client = startUsageReporting(self.settingsFile, lambda message: None)
+        self.addCleanup(client.close)
+
+        atexit.register.assert_called_once_with(client.close)
 
     def test_start_never_raises_even_if_settings_loading_fails(self):
         with patch("server_usage_reporting.loadSettings", side_effect=RuntimeError("boom")):
