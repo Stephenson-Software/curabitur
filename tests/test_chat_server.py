@@ -1,6 +1,6 @@
-"""Tests for ChatServer's accept loop and chat loop, and for the Ctrl-C and OSError handling
-in its __main__ block. socket.socket and input() are patched, so nothing here binds a real port or
-waits on a terminal."""
+"""Tests for ChatServer's accept loop and chat loop, and for the banner, host lookup, usage
+wiring, Ctrl-C and OSError handling in its __main__ block. socket.socket and input() are patched,
+so nothing here binds a real port or waits on a terminal."""
 import errno
 import importlib.util
 import io
@@ -46,8 +46,8 @@ def _listeningSocket(received=None):
 
 def _run(server, sockets, inputs):
     """Run server.listen() with socket.socket handing out the given mocks in turn and input()
-    returning the given values in turn (an exception is raised instead). Returns what was
-    printed."""
+    returning the given values in turn (an exception is raised instead). Pass a mock as sockets
+    to record the arguments to socket.socket. Returns what was printed."""
     out = io.StringIO()
     with patch.object(chatServer.socket, "socket", side_effect=sockets), \
          patch("builtins.input", side_effect=inputs), \
@@ -60,19 +60,20 @@ def _run(server, sockets, inputs):
     return out.getvalue(), reportConnected
 
 
-def _runMain(sockets, inputs, out=None, lookupError=None):
+def _runMain(sockets, inputs, out=None, lookup=None, usageClient=None):
     """Run chatServer.py's __main__ block like _run, with the host lookup and usage reporting
-    patched out so nothing resolves a name or is sent; with lookupError, the lookup of the host
-    name "chat-host" raises it. Returns what was printed; pass out to read it when the block
-    exits instead of returning."""
+    patched out so nothing resolves a name or is sent; startUsageReporting returns usageClient.
+    The lookup of the host name "chat-host" finds 10.0.0.5; pass an exception as lookup to raise
+    it instead, or a mock to answer in its place and record the call. Returns what was printed;
+    pass out to read it when the block exits instead of returning."""
     out = out if out is not None else io.StringIO()
     usage = sys.modules["usage_reporting"]
     with patch.object(socket, "socket", side_effect=sockets), \
          patch.object(socket, "gethostname", return_value="chat-host"), \
-         patch.object(socket, "getaddrinfo", side_effect=lookupError,
+         patch.object(socket, "getaddrinfo", side_effect=lookup,
                       return_value=[(None, None, None, None, ("10.0.0.5", 0))]), \
          patch("builtins.input", side_effect=inputs), \
-         patch.object(usage, "startUsageReporting", return_value=None), \
+         patch.object(usage, "startUsageReporting", return_value=usageClient), \
          redirect_stdout(out):
         try:
             runpy.run_path(os.path.join(_SRC, "chatServer.py"), run_name="__main__")
@@ -89,6 +90,17 @@ class TestChatServer(unittest.TestCase):
         sock.setsockopt.assert_called_once_with(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         sock.bind.assert_called_once_with(("10.0.0.5", 36578))
         sock.listen.assert_called_once_with()
+
+    def test_listens_over_ipv4_tcp(self):
+        sock, _ = _listeningSocket()
+        factory = MagicMock(return_value=sock)
+        _run(ChatServer("host", 1), factory, [])
+        factory.assert_called_once_with(socket.AF_INET, socket.SOCK_STREAM)
+
+    def test_reads_a_turn_with_a_single_1024_byte_recv(self):
+        sock, connection = _listeningSocket([b"ping"])
+        _run(ChatServer("host", 1), [sock], [EOFError()])
+        connection.recv.assert_called_once_with(1024)
 
     def test_prints_the_message_as_a_quoted_repr_and_sends_the_utf8_reply(self):
         # the !r quoting is tracked in issue #8; this asserts the current behavior
@@ -171,6 +183,28 @@ class TestChatServer(unittest.TestCase):
         _, reportConnected = _run(ChatServer("host", 1), [sock], [EOFError()])
         reportConnected.assert_not_called()
 
+    def test_main_hands_the_usage_client_to_the_chat_server(self):
+        # the role tag is not asserted: the tests share one usage_reporting module, which
+        # may be the client's copy in a full run
+        usageClient = MagicMock()
+        sock, _ = _listeningSocket([b"ping"])
+        _runMain([sock], [EOFError()], usageClient=usageClient)
+        usageClient.report.assert_called_once()
+        self.assertEqual(usageClient.report.call_args[0], ("connected",))
+
+    def test_main_prints_the_banner(self):
+        sock, _ = _listeningSocket()
+        sock.accept.side_effect = KeyboardInterrupt()
+        self.assertIn(" === Chat Server === ", _runMain([sock], []))
+
+    def test_main_listens_on_the_ipv4_address_of_the_host_name(self):
+        lookup = MagicMock(return_value=[(None, None, None, None, ("10.0.0.5", 0))])
+        sock, _ = _listeningSocket()
+        sock.accept.side_effect = KeyboardInterrupt()
+        _runMain([sock], [], lookup=lookup)
+        lookup.assert_called_once_with("chat-host", 0, socket.AF_INET)
+        sock.bind.assert_called_once_with(("10.0.0.5", 36578))
+
     def test_ctrl_c_while_waiting_for_a_client_exits_cleanly(self):
         sock, _ = _listeningSocket()
         sock.accept.side_effect = KeyboardInterrupt()
@@ -210,7 +244,7 @@ class TestChatServer(unittest.TestCase):
         # issue #48: no socket is opened, since the lookup comes before listen()
         out = io.StringIO()
         with self.assertRaises(SystemExit) as exited:
-            _runMain([], [], out=out, lookupError=socket.gaierror(-2, "Name or service not known"))
+            _runMain([], [], out=out, lookup=socket.gaierror(-2, "Name or service not known"))
         self.assertEqual(exited.exception.code, 1)
         self.assertIn("Could not resolve this machine's host name 'chat-host': "
                       "Name or service not known. Exiting.", out.getvalue())
