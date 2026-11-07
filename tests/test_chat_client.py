@@ -1,6 +1,6 @@
-"""Tests for ChatClient's connect loop and chat loop, and for the CHAT_SERVER_IP check and
-Ctrl-C handling in its __main__ block. socket.socket and input() are patched, so nothing
-here opens a real connection or waits on a terminal."""
+"""Tests for ChatClient's connect loop and chat loop, and for the banner, usage wiring,
+CHAT_SERVER_IP check and Ctrl-C handling in its __main__ block. socket.socket and input() are
+patched, so nothing here opens a real connection or waits on a terminal."""
 import errno
 import importlib.util
 import io
@@ -28,8 +28,8 @@ ChatClient = chatClient.ChatClient
 
 def _run(client, sockets, inputs):
     """Run client.connect() with socket.socket handing out the given mocks in turn and
-    input() returning the given values in turn (an exception is raised instead). Returns
-    what was printed."""
+    input() returning the given values in turn (an exception is raised instead). Pass a mock
+    as sockets to record the arguments to socket.socket. Returns what was printed."""
     out = io.StringIO()
     with patch.object(chatClient.socket, "socket", side_effect=sockets), \
          patch("builtins.input", side_effect=inputs), \
@@ -40,17 +40,18 @@ def _run(client, sockets, inputs):
     return out.getvalue(), reportConnected
 
 
-def _runMain(sockets, inputs, sleep=None, out=None):
+def _runMain(sockets, inputs, sleep=None, out=None, usageClient=None):
     """Run chatClient.py's __main__ block like _run, with CHAT_SERVER_IP set and usage
-    reporting patched out so nothing is sent. Returns what was printed; pass out to read
-    it when the block exits instead of returning."""
+    reporting patched out so nothing is sent; startUsageReporting returns usageClient. Pass a
+    mock as sleep to record the pause. Returns what was printed; pass out to read it when
+    the block exits instead of returning."""
     out = out if out is not None else io.StringIO()
     usage = sys.modules["usage_reporting"]
     with patch.dict(os.environ, {"CHAT_SERVER_IP": "10.0.0.5"}), \
          patch.object(socket, "socket", side_effect=sockets), \
          patch("builtins.input", side_effect=inputs), \
          patch.object(time, "sleep", side_effect=sleep), \
-         patch.object(usage, "startUsageReporting", return_value=None), \
+         patch.object(usage, "startUsageReporting", return_value=usageClient), \
          redirect_stdout(out):
         try:
             runpy.run_path(os.path.join(_SRC, "chatClient.py"), run_name="__main__")
@@ -65,6 +66,24 @@ class TestChatClient(unittest.TestCase):
         sock = MagicMock()
         _run(ChatClient("10.0.0.5", 36578), [sock], [EOFError()])
         sock.connect.assert_called_once_with(("10.0.0.5", 36578))
+
+    def test_dials_over_ipv4_tcp(self):
+        factory = MagicMock(return_value=MagicMock())
+        _run(ChatClient("host", 1), factory, [EOFError()])
+        factory.assert_called_once_with(socket.AF_INET, socket.SOCK_STREAM)
+
+    def test_reads_a_turn_with_a_single_1024_byte_recv(self):
+        sock = MagicMock()
+        sock.recv.return_value = b"pong"
+        _run(ChatClient("host", 1), [sock], ["ping", EOFError()])
+        sock.recv.assert_called_once_with(1024)
+
+    def test_prints_a_blank_line_after_each_reply(self):
+        # ended by a disconnect, because "Input closed" starts with a newline of its own
+        sock = MagicMock()
+        sock.recv.side_effect = [b"pong", b""]
+        output, _ = _run(ChatClient("host", 1), [sock], ["ping", "ping"])
+        self.assertIn("Server: 'pong'\n\nServer disconnected. Exiting.", output)
 
     def test_sends_the_utf8_encoding_of_what_was_typed(self):
         sock = MagicMock()
@@ -115,6 +134,14 @@ class TestChatClient(unittest.TestCase):
         self.assertIn("Attempts Made: 1", output)
         self.assertIn("Attempts Made: 2", output)
 
+    def test_pauses_one_second_between_attempts(self):
+        refused, good = MagicMock(), MagicMock()
+        refused.connect.side_effect = ConnectionRefusedError("refused")
+        pause = MagicMock(return_value=None)
+        output = _runMain([refused, good], [EOFError()], sleep=pause)
+        pause.assert_called_once_with(1)
+        self.assertIn("Retrying in 1 second.", output)
+
     def test_an_empty_message_is_not_sent_and_the_prompt_is_repeated(self):
         # issue #40: sendall(b"") puts nothing on the wire, so both sides would wait forever
         sock = MagicMock()
@@ -155,6 +182,17 @@ class TestChatClient(unittest.TestCase):
         reportConnected.assert_called_once_with(usage)
         _, reportConnected = _run(ChatClient("host", 1), [MagicMock()], [EOFError()])
         reportConnected.assert_not_called()
+
+    def test_main_hands_the_usage_client_to_the_chat_client(self):
+        # the role tag is not asserted: the tests share one usage_reporting module, which
+        # may be the server's copy in a full run
+        usageClient = MagicMock()
+        _runMain([MagicMock()], [EOFError()], usageClient=usageClient)
+        usageClient.report.assert_called_once()
+        self.assertEqual(usageClient.report.call_args[0], ("connected",))
+
+    def test_main_prints_the_banner(self):
+        self.assertIn(" === Chat Client === ", _runMain([MagicMock()], [EOFError()]))
 
     def test_exits_1_when_chat_server_ip_is_not_set(self):
         env = {k: v for k, v in os.environ.items() if k != "CHAT_SERVER_IP"}
