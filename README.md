@@ -50,7 +50,7 @@ A connection that fails mid-chat in some way other than a reset, a broken pipe o
 ## Usage reporting
 Usage reporting is on by default: the server and the client each send the program's name (`curabitur`), its version and the events `startup` (when the program starts) and `connected` (when the server accepts a client, or the client reaches a server) to [trace](https://github.com/Stephenson-Software/trace) at `https://trace.danielstephenson.dev`. Every event carries a `role` tag saying which of the two sent it (`server` or `client`), and a random installation ID (the tag `install`) so installations can be counted rather than events. Nothing about you, your machine, your IP address, the addresses you connect to or the messages is sent. The report is made from a background thread, never blocks the chat, and is dropped silently if the service is unreachable.
 
-The first launch of each program writes a `settings.json` next to its `src/` directory (`server/settings.json`, `client/settings.json`) and prints a one-line notice. If that file exists but cannot be read, for example because it is not valid JSON, the program reports `Could not read <path> (<reason>); usage reporting is off until it is fixed.`, leaves the file alone and carries on without reporting.
+The first launch of each program writes a `settings.json` next to its `src/` directory (`server/settings.json`, `client/settings.json`) and prints a one-line notice. If that file exists but cannot be read, for example because it is not valid JSON, the program reports `Could not read <path> (<reason>); usage reporting is off until it is fixed.`, leaves the file alone and carries on without reporting. A file that is valid JSON but not an object, such as `[]`, is treated the same way. If the file cannot be written, for example because the directory is read-only, the program reports `Could not write <path> (<reason>); the notice above will be shown again next time.` and carries on with reporting on.
 
 The installation ID is a random UUID kept in a file named `trace-install-id` in the user data directory, shared by the server and the client on the same machine: `~/.local/share/curabitur/` on Linux (or `$XDG_DATA_HOME/curabitur/`), `~/Library/Application Support/curabitur/` on macOS and `%APPDATA%\curabitur\` on Windows. It identifies no person, account or address; delete the file to get a new one. Setting the environment variable `TRACE_INSTALL_ID` sends that value instead, without surrounding whitespace, and leaves the file alone. An empty or whitespace-only value is ignored and the file is used. A value longer than 255 characters turns usage reporting off, with no message. The file is only created while reporting is on, so every opt-out below also stops it.
 
@@ -65,6 +65,8 @@ To turn reporting off, any one of these is enough:
     }
   }
   ```
+
+  The value has to be the JSON boolean `false`. A quoted `"false"`, like any other non-empty string, leaves reporting on, with no message. A `usage_reporting` entry that is not an object, such as `"usage_reporting": false`, also leaves reporting on: it is replaced in the file by the default block, with `"enabled": true`, and the first-launch notice is printed.
 
 - the environment variable `TRACE_USAGE_REPORTING=off` (also `false`, `0`, `no`; case does not matter), which turns off every program that reports to trace
 - the environment variable `DO_NOT_TRACK=1` (also `true`, `yes`; case does not matter; see [consoledonottrack.com](https://consoledonottrack.com))
