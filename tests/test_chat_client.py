@@ -176,6 +176,22 @@ class TestChatClient(unittest.TestCase):
         sock.sendall.assert_called_once_with(b"ping")
         self.assertIn("Server disconnected. Exiting.", output)
 
+    def test_closes_the_socket_when_the_chat_ends(self):
+        # closed input, a clean close by the server and a reset all leave through the with block
+        for name, recv, inputs in (("closed input", None, [EOFError()]),
+                                   ("server closed", [b""], ["ping"]),
+                                   ("reset", ConnectionResetError(), ["ping"])):
+            with self.subTest(ending=name):
+                sock = MagicMock()
+                if recv is not None:
+                    sock.recv.side_effect = recv
+                _run(ChatClient("host", 1), [sock], inputs)
+                sock.__exit__.assert_called_once()
+
+    def test_prints_the_address_it_is_connecting_to(self):
+        output, _ = _run(ChatClient("host", 1), [MagicMock()], [EOFError()])
+        self.assertTrue(output.startswith("Connecting to host:1...\n"), output)
+
     def test_reports_connected_only_when_usage_reporting_is_on(self):
         usage = object()
         _, reportConnected = _run(ChatClient("host", 1, usage), [MagicMock()], [EOFError()])
