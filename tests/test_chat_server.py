@@ -174,6 +174,19 @@ class TestChatServer(unittest.TestCase):
                 second.bind.assert_called_once_with(("host", 1))
                 self.assertEqual(output.count("Listening on host:1..."), 2)
 
+    def test_closes_the_connection_and_the_listening_socket_before_listening_again(self):
+        # closing the listening socket is what disconnects a second client left waiting in
+        # its backlog during the chat (README, "Ending a Session")
+        first, connection = _listeningSocket([b""])
+        second, _ = _listeningSocket()
+        order = MagicMock()
+        order.attach_mock(connection.__exit__, "connectionClosed")
+        order.attach_mock(first.__exit__, "listeningSocketClosed")
+        order.attach_mock(second.bind, "boundAgain")
+        _run(ChatServer("host", 1), [first, second], [])
+        self.assertEqual([call[0] for call in order.mock_calls],
+                         ["connectionClosed", "listeningSocketClosed", "boundAgain"])
+
     def test_reports_connected_only_when_usage_reporting_is_on(self):
         usage = object()
         sock, _ = _listeningSocket([b"ping"])
