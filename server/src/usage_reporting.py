@@ -14,14 +14,14 @@ turn it off; setting ``enabled`` to ``false`` there does. So do the
 which every trace client honours and which win over the settings file because
 the client checks them first. Every call returns immediately and never raises:
 the network happens on a daemon thread owned by the vendored client in
-``trace_client.py``. Details: https://github.com/Stephenson-Software/trace#usage-reporting
+``trace_client.py``. Details: https://danielstephenson.dev/usage-reporting
 """
 import atexit
 import json
 import os
 import sys
 
-from trace_client import TraceClient, environment_opts_out
+from trace_client import TraceClient, allows_reporting, environment_opts_out
 
 # @author Daniel McCoy Stephenson
 # @since September 24th, 2026
@@ -41,7 +41,7 @@ ROLE = "server"
 _HERE = os.path.dirname(os.path.abspath(__file__))
 SETTINGS_FILE = os.path.normpath(os.path.join(_HERE, "..", "settings.json"))
 
-DETAILS_URL = "https://github.com/Stephenson-Software/trace#usage-reporting"
+DETAILS_URL = "https://danielstephenson.dev/usage-reporting"
 
 FIRST_RUN_NOTICE = (
     "Usage reporting is on: the curabitur server sends its name, version and role when it starts and "
@@ -108,6 +108,11 @@ def loadSettings(settingsFile=SETTINGS_FILE, log=print):
     section = settings.get(SETTINGS_SECTION)
     if isinstance(section, dict):
         return section
+    if SETTINGS_SECTION in settings:
+        # "usage_reporting": false (or "off", null, ...) is a setting, not a missing block:
+        # read it as ``enabled`` and leave the file alone rather than replace it with the
+        # default block, which would turn reporting back on.
+        return {"enabled": section}
 
     settings[SETTINGS_SECTION] = defaultSettings()
     log(firstRunNotice())
@@ -123,6 +128,9 @@ def loadSettings(settingsFile=SETTINGS_FILE, log=print):
 def buildClient(section):
     """A TraceClient for the given usage_reporting settings; disabled when they are None.
 
+    ``enabled`` is read through the client's ``allows_reporting``, which fails closed: only
+    ``true`` (or "true", "on", "yes", "1") keeps reporting on, so ``"false"``, ``"off"``,
+    ``null`` or a typo turn it off; a block with no ``enabled`` at all keeps the default (on).
     Always built through the client's constructor otherwise, which puts
     TRACE_USAGE_REPORTING / DO_NOT_TRACK ahead of ``enabled`` and records why it is off in
     ``disabled_reason``. A missing endpoint or key falls back to the shipped default. Every
@@ -138,7 +146,7 @@ def buildClient(section):
             APPLICATION,
             VERSION,
             key=str(section.get("key") or DEFAULT_KEY),
-            enabled=bool(section.get("enabled", True)),
+            enabled=allows_reporting(section.get("enabled", True)),
             install_id=os.environ.get("TRACE_INSTALL_ID"),
             install_id_file=installIdFile(),
         )

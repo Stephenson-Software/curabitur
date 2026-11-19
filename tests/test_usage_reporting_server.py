@@ -118,7 +118,7 @@ class TestUsageReportingSettings(unittest.TestCase):
         self.assertIn('"enabled": false', FIRST_RUN_NOTICE)
         self.assertIn("TRACE_USAGE_REPORTING=off", FIRST_RUN_NOTICE)
         self.assertIn(DETAILS_URL, FIRST_RUN_NOTICE)
-        self.assertEqual("https://github.com/Stephenson-Software/trace#usage-reporting", DETAILS_URL)
+        self.assertEqual("https://danielstephenson.dev/usage-reporting", DETAILS_URL)
         self.assertNotIn("\n", FIRST_RUN_NOTICE)
 
     def test_first_run_under_an_environment_opt_out_says_reporting_is_off(self):
@@ -199,19 +199,20 @@ class TestUsageReportingSettings(unittest.TestCase):
         self.assertIn("the notice above will be shown again next time", self.logged[1])
         self.assertFalse(os.path.exists(settingsFile))
 
-    def test_a_block_that_is_not_an_object_is_replaced_by_the_enabled_defaults(self):
-        # characterizes the current behavior, even for false; whether it is intended is #58
-        for block in (False, None, "off"):
+    def test_a_block_that_is_not_an_object_is_an_opt_out_and_is_left_alone(self):
+        # "usage_reporting": false used to be replaced by the enabled defaults (#58)
+        for block in (False, None, "off", "false", 0):
             with self.subTest(block=block):
                 self.logged.clear()
                 with open(self.settingsFile, "w") as f:
                     json.dump({"usage_reporting": block}, f)
 
-                section = loadSettings(self.settingsFile, self.log)
+                client = buildClient(loadSettings(self.settingsFile, self.log))
 
-                self.assertEqual({"enabled": True, "endpoint": DEFAULT_ENDPOINT, "key": DEFAULT_KEY}, section)
-                self.assertEqual([FIRST_RUN_NOTICE], self.logged)
-                self.assertEqual({"usage_reporting": section}, self.readSettingsFile())
+                self.assertFalse(client.enabled)
+                self.assertEqual("config", client.disabled_reason)
+                self.assertEqual([], self.logged)
+                self.assertEqual({"usage_reporting": block}, self.readSettingsFile())
 
     def test_installation_id_is_kept_under_the_user_data_dir_and_reused(self):
         with patch("server_usage_reporting.sys.platform", "linux"), \
@@ -299,14 +300,26 @@ class TestUsageReportingSettings(unittest.TestCase):
         self.assertTrue(client.enabled)
         self.assertIsNone(client.disabled_reason)
 
-    def test_enabled_is_read_for_truthiness(self):
-        # characterizes the current behavior; the quoted "false" leaving reporting on is #56
-        for value, expected in ((None, False), (0, False), ("", False), (1, True), ("false", True)):
+    def test_enabled_turns_reporting_on_only_when_it_clearly_means_on(self):
+        # the quoted "false" used to leave reporting on (#56)
+        for value, expected in ((None, False), (0, False), ("", False), (1, False), ("false", False),
+                                ("off", False), ("no", False), ("0", False), ("nope", False), ([], False),
+                                (True, True), ("true", True), (" On ", True), ("yes", True), ("1", True)):
             with self.subTest(value=value):
                 client = buildClient({"enabled": value})
                 self.addCleanup(client.close)
 
                 self.assertEqual(expected, client.enabled)
+
+    def test_a_quoted_opt_out_in_the_settings_file_is_respected_and_not_rewritten(self):
+        with open(self.settingsFile, "w") as f:
+            json.dump({"usage_reporting": {"enabled": "false"}}, f)
+
+        client = buildClient(loadSettings(self.settingsFile, self.log))
+
+        self.assertFalse(client.enabled)
+        self.assertEqual([], self.logged)
+        self.assertEqual({"usage_reporting": {"enabled": "false"}}, self.readSettingsFile())
 
     def test_empty_endpoint_and_key_fall_back_to_the_shipped_defaults(self):
         client = buildClient({"enabled": True, "endpoint": "", "key": ""})

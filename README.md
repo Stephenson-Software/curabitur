@@ -66,16 +66,16 @@ To turn reporting off, any one of these is enough:
   }
   ```
 
-  Use the JSON boolean `false`. A quoted `"false"`, like any other non-empty string, leaves reporting on, with no message. A `usage_reporting` entry that is not an object, such as `"usage_reporting": false`, also leaves reporting on: it is replaced in the file by the default block, with `"enabled": true`, and the first-launch notice is printed.
+  `enabled` fails closed: only `true` (or the string `"true"`, `"on"`, `"yes"` or `"1"`) keeps reporting on, so a quoted `"false"`, `"off"`, `null` or a typo turns it off; a block with no `enabled` entry keeps the default (on). A `usage_reporting` entry that is not an object, such as `"usage_reporting": false`, is read the same way and turns reporting off. An existing `usage_reporting` entry is never rewritten, so an opt-out stays put.
 
-- the environment variable `TRACE_USAGE_REPORTING=off` (also `false`, `0`, `no`; case does not matter), which turns off every program that reports to trace
-- the environment variable `DO_NOT_TRACK=1` (also `true`, `yes`; case does not matter; see [consoledonottrack.com](https://consoledonottrack.com))
+- the environment variable `TRACE_USAGE_REPORTING=off`, which turns off every program that reports to trace; any value but blank, `true`, `on`, `yes` or `1` does (`false`, `0`, `no`, a typo, ...; case does not matter)
+- the environment variable `DO_NOT_TRACK=1` (see [consoledonottrack.com](https://consoledonottrack.com)); any value but blank, `0`, `false`, `off` or `no` does (case does not matter)
 
 Any other value, including an empty one, leaves the `settings.json` setting in charge.
 
 The environment variables win over `settings.json`. Under Docker the containers are removed on exit, so a `settings.json` written inside one does not persist; `run_server.sh` and `run_client.sh` pass `TRACE_USAGE_REPORTING`, `DO_NOT_TRACK` and `TRACE_INSTALL_ID` through to the container, so `TRACE_USAGE_REPORTING=off bash run_server.sh` turns reporting off there. A `settings.json` that is already in `server/` or `client/` when the image is built, for example from an earlier local run, is copied into the image along with the rest of the directory, and every container started from that image reads it. An opt-out made there therefore applies under Docker too, from the next build on; `run_server.sh` and `run_client.sh` rebuild the image every time they run. For the same reason as the `settings.json` written inside a container, a container's installation ID file does not persist either: each run gets a new ID unless `TRACE_INSTALL_ID` is set. The `endpoint` and `key` entries in the settings block select where reports go and the key they are sent with. Each program carries its own copy of the client (`src/trace_client.py`, vendored from [trace-client-python](https://github.com/Stephenson-Software/trace-client-python)) and of the settings handling (`src/usage_reporting.py`), because each is built into its own image from its own directory.
 
-Details: https://github.com/Stephenson-Software/trace#usage-reporting
+Details: https://danielstephenson.dev/usage-reporting
 
 ## Tests
 ```
