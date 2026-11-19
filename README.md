@@ -66,10 +66,10 @@ To turn reporting off, any one of these is enough:
   }
   ```
 
-  Use the JSON boolean `false`. A quoted `"false"`, like any other non-empty string, leaves reporting on, with no message. A `usage_reporting` entry that is not an object, such as `"usage_reporting": false`, also leaves reporting on: it is replaced in the file by the default block, with `"enabled": true`, and the first-launch notice is printed.
+  `enabled` fails closed: only `true` (or the string `"true"`, `"on"`, `"yes"` or `"1"`) keeps reporting on, so a quoted `"false"`, `"off"`, `null` or a typo turns it off; a block with no `enabled` entry keeps the default (on). A `usage_reporting` entry that is not an object, such as `"usage_reporting": false`, is read the same way and turns reporting off. An existing `usage_reporting` entry is never rewritten, so an opt-out stays put.
 
-- the environment variable `TRACE_USAGE_REPORTING=off` (also `false`, `0`, `no`; case does not matter), which turns off every program that reports to trace
-- the environment variable `DO_NOT_TRACK=1` (also `true`, `yes`; case does not matter; see [consoledonottrack.com](https://consoledonottrack.com))
+- the environment variable `TRACE_USAGE_REPORTING=off`, which turns off every program that reports to trace; any value but blank, `true`, `on`, `yes` or `1` does (`false`, `0`, `no`, a typo, ...; case does not matter)
+- the environment variable `DO_NOT_TRACK=1` (see [consoledonottrack.com](https://consoledonottrack.com)); any value but blank, `0`, `false`, `off` or `no` does (case does not matter)
 
 Any other value, including an empty one, leaves the `settings.json` setting in charge.
 
