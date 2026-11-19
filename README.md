@@ -66,7 +66,7 @@ To turn reporting off, any one of these is enough:
   }
   ```
 
-  `enabled` fails closed: only `true` (or the string `"true"`, `"on"`, `"yes"` or `"1"`) keeps reporting on, so a quoted `"false"`, `"off"`, `null` or a typo turns it off; a block with no `enabled` entry keeps the default (on). A `usage_reporting` entry that is not an object, such as `"usage_reporting": false`, is read the same way and turns reporting off. An existing `usage_reporting` entry is never rewritten, so an opt-out stays put.
+  `enabled` fails closed: only `true` (or the string `"true"`, `"on"`, `"yes"` or `"1"`) keeps reporting on, so a quoted `"false"`, `"off"`, `null` or a typo turns it off; a block with no `enabled` entry keeps the default (on). A `usage_reporting` entry that is not an object, such as `"usage_reporting": false`, is read the same way and turns reporting off. An existing `usage_reporting` entry is never rewritten, so an opt-out stays put. Other spellings count as off too: a block written as `"usage-reporting"`, `"usageReporting"` or `"UsageReporting"` (or any spelling of "usage reporting") holding `false` or `"enabled": false`, and inside the block `"enable": false`, `"Enabled": false` or `"disabled": true`; the real `usage_reporting` block is then written with `"enabled": false` next to it rather than with reporting on.
 
 - the environment variable `TRACE_USAGE_REPORTING=off`, which turns off every program that reports to trace; any value but blank, `true`, `on`, `yes` or `1` does (`false`, `0`, `no`, a typo, ...; case does not matter)
 - the environment variable `DO_NOT_TRACK=1` (see [consoledonottrack.com](https://consoledonottrack.com)); any value but blank, `0`, `false`, `off` or `no` does (case does not matter)
