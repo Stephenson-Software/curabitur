@@ -75,7 +75,7 @@ Any other value, including an empty one, leaves the `settings.json` setting in c
 
 The environment variables win over `settings.json`. Under Docker the containers are removed on exit, so a `settings.json` written inside one does not persist; `run_server.sh` and `run_client.sh` pass `TRACE_USAGE_REPORTING`, `DO_NOT_TRACK` and `TRACE_INSTALL_ID` through to the container, so `TRACE_USAGE_REPORTING=off bash run_server.sh` turns reporting off there. A `settings.json` that is already in `server/` or `client/` when the image is built, for example from an earlier local run, is copied into the image along with the rest of the directory, and every container started from that image reads it. An opt-out made there therefore applies under Docker too, from the next build on; `run_server.sh` and `run_client.sh` rebuild the image every time they run. For the same reason as the `settings.json` written inside a container, a container's installation ID file does not persist either: each run gets a new ID unless `TRACE_INSTALL_ID` is set. The `endpoint` and `key` entries in the settings block select where reports go and the key they are sent with. Each program carries its own copy of the client (`src/trace_client.py`, vendored from [trace-client-python](https://github.com/Stephenson-Software/trace-client-python)) and of the settings handling (`src/usage_reporting.py`), because each is built into its own image from its own directory.
 
-Details: https://github.com/Stephenson-Software/trace#usage-reporting
+Details: https://danielstephenson.dev/usage-reporting
 
 ## Tests
 ```
