@@ -278,6 +278,25 @@ class TestChatServer(unittest.TestCase):
                 connection.__exit__.assert_called_once()
                 sock.__exit__.assert_called_once()
 
+    def test_exits_1_when_the_reply_cannot_be_sent_mid_chat(self):
+        # only a reset or a broken pipe on sendall() means the client went away; any other
+        # OSError leaves listen() as the recv() failure above does (whether the server should
+        # listen again instead is issue #45)
+        for error, reason in ((OSError(errno.ETIMEDOUT, "Connection timed out"), "Connection timed out"),
+                              (OSError("no errno"), "no errno")):
+            with self.subTest(reason=reason):
+                sock, connection = _listeningSocket([b"ping"])
+                connection.sendall.side_effect = error
+                out = io.StringIO()
+                with self.assertRaises(SystemExit) as exited:
+                    _runMain([sock], ["pong"], out=out)
+                self.assertEqual(exited.exception.code, 1)
+                self.assertIn(f"Server on 10.0.0.5:36578 failed: {reason}. Exiting.", out.getvalue())
+                self.assertEqual(out.getvalue().count("Listening on"), 1)
+                connection.sendall.assert_called_once_with(b"pong")
+                connection.__exit__.assert_called_once()
+                sock.__exit__.assert_called_once()
+
     def test_server_and_client_use_the_same_port(self):
         ports = []
         for role, name in (("server", "chatServer.py"), ("client", "chatClient.py")):
