@@ -274,6 +274,24 @@ class TestChatClient(unittest.TestCase):
                               out.getvalue())
                 sock.__exit__.assert_called_once()
 
+    def test_exits_1_when_the_message_cannot_be_sent_mid_chat(self):
+        # only a reset or a broken pipe on sendall() means the server went away; any other
+        # OSError is reported like the recv() failure above, without waiting for a reply
+        for error, reason in ((OSError(errno.ETIMEDOUT, "Connection timed out"), "Connection timed out"),
+                              (OSError("no errno"), "no errno")):
+            with self.subTest(reason=reason):
+                sock = MagicMock()
+                sock.sendall.side_effect = error
+                out = io.StringIO()
+                with self.assertRaises(SystemExit) as exited:
+                    _runMain([sock], ["ping"], out=out)
+                self.assertEqual(exited.exception.code, 1)
+                self.assertIn(f"Connection to 10.0.0.5:36578 failed: {reason}. Exiting.",
+                              out.getvalue())
+                self.assertNotIn("Server disconnected", out.getvalue())
+                sock.recv.assert_not_called()
+                sock.__exit__.assert_called_once()
+
     def test_ctrl_c_while_retrying_exits_cleanly(self):
         refused = MagicMock()
         refused.connect.side_effect = ConnectionRefusedError("refused")
